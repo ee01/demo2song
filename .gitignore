@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.turbo/
+.cache/
+.DS_Store
+.swc/
+.env
+.env.*
+!.env.example
+coverage/
+apps/api/prisma/generated/
+apps/api/uploads/
+apps/worker/tmp/
+apps/mp-weixin/dist/
+apps/mp-weixin/.DS_Store
+apps/mp-weixin/.swc/
+package-lock.json

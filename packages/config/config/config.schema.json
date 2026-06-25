@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Demo2SongConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["defaultProvider", "models", "limits", "storage", "features"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "defaultProvider": { "enum": ["minimax", "mureka"] },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimax", "mureka"],
+      "properties": {
+        "minimax": { "$ref": "#/$defs/modelConfig" },
+        "mureka": { "$ref": "#/$defs/modelConfig" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minRecordingSeconds",
+        "maxRecordingSeconds",
+        "demoTargetSeconds",
+        "fullSongMinSeconds",
+        "fullSongMaxSeconds",
+        "dailyDemoJobsPerUser",
+        "dailyExtendJobsPerUser",
+        "refundQuotaOnProviderFailure"
+      ],
+      "properties": {
+        "minRecordingSeconds": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "maxRecordingSeconds": { "type": "integer", "minimum": 5, "maximum": 360 },
+        "demoTargetSeconds": { "type": "integer", "minimum": 15, "maximum": 90 },
+        "fullSongMinSeconds": { "type": "integer", "minimum": 60, "maximum": 600 },
+        "fullSongMaxSeconds": { "type": "integer", "minimum": 60, "maximum": 600 },
+        "dailyDemoJobsPerUser": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "dailyExtendJobsPerUser": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "refundQuotaOnProviderFailure": { "type": "boolean" }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "recordingRetention", "songRetention", "signedUrlTtlSeconds"],
+      "properties": {
+        "provider": { "enum": ["cos"] },
+        "recordingRetention": { "enum": ["permanent"] },
+        "songRetention": { "enum": ["permanent"] },
+        "signedUrlTtlSeconds": { "type": "integer", "minimum": 60, "maximum": 86400 }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enableExtendSong",
+        "enableApproximateMinimaxExtend",
+        "enableCommercialUseGate"
+      ],
+      "properties": {
+        "enableExtendSong": { "type": "boolean" },
+        "enableApproximateMinimaxExtend": { "type": "boolean" },
+        "enableCommercialUseGate": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "modelConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["demoModel", "fullModel", "allowPaidModels"],
+      "properties": {
+        "demoModel": { "type": "string", "minLength": 1 },
+        "fullModel": { "type": "string", "minLength": 1 },
+        "allowPaidModels": { "type": "boolean" }
+      }
+    }
+  }
+}

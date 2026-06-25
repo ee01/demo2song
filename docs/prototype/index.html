@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>哼唱成歌 · 界面原型</title>
+<style>
+  :root {
+    --bg-0: #0b0420;
+    --bg-1: #1a0b3d;
+    --accent: #b98bff;
+    --accent-2: #6a5cff;
+    --accent-3: #ff7ad9;
+    --text: #f4f1ff;
+    --text-dim: #b3a8d6;
+    --card: rgba(255, 255, 255, 0.06);
+    --card-border: rgba(255, 255, 255, 0.12);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    background: #07030f;
+    color: var(--text);
+  }
+
+  /* 手机外壳，方便在桌面预览；真机里就是整屏 */
+  .phone {
+    position: relative;
+    width: 390px;
+    height: 844px;
+    margin: 24px auto;
+    border-radius: 44px;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 80% at 50% -10%, var(--bg-1) 0%, var(--bg-0) 55%, #05020d 100%);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+
+  @media (max-width: 430px) {
+    .phone { width: 100vw; height: 100vh; margin: 0; border-radius: 0; }
+    body { background: #07030f; }
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 64px 24px 32px;
+    opacity: 0;
+    transform: translateX(24px);
+    pointer-events: none;
+    transition: opacity .45s ease, transform .45s ease;
+  }
+  .screen.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  /* ===== 顶部状态条（装饰） ===== */
+  .statusbar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: .5px;
+    z-index: 20;
+  }
+
+  /* =========================================================
+     SCREEN 1 · 录音
+     ========================================================= */
+  #screen-record { justify-content: space-between; align-items: center; }
+
+  .brand {
+    text-align: center;
+    margin-top: 8px;
+  }
+  .brand h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: 1px;
+  }
+  .brand p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  .stage {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 麦克风按钮 */
+  .mic-wrap {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 外圈呼吸光环 */
+  .halo {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(185,139,255,0.35), rgba(106,92,255,0.05) 60%, transparent 70%);
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(0.92); opacity: .6; }
+    50% { transform: scale(1.05); opacity: 1; }
+  }
+
+  /* 录音时的扩散涟漪 */
+  .ripple {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(185,139,255,0.5);
+    opacity: 0;
+  }
+  .recording .ripple { animation: ripple 1.8s ease-out infinite; }
+  .recording .ripple:nth-child(2) { animation-delay: .6s; }
+  .recording .ripple:nth-child(3) { animation-delay: 1.2s; }
+  @keyframes ripple {
+    0% { transform: scale(0.7); opacity: .7; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  .mic-btn {
+    position: relative;
+    z-index: 3;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background:
+      radial-gradient(120% 120% at 30% 20%, #c9a9ff 0%, var(--accent-2) 55%, #4a3acc 100%);
+    box-shadow:
+      0 18px 40px rgba(106, 92, 255, 0.55),
+      inset 0 2px 6px rgba(255,255,255,0.4),
+      inset 0 -8px 18px rgba(40, 20, 90, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .18s ease, box-shadow .18s ease;
+    touch-action: none;
+    user-select: none;
+  }
+  .mic-btn:active { transform: scale(0.96); }
+  .mic-wrap.recording .mic-btn {
+    transform: scale(1.06);
+    box-shadow:
+      0 22px 60px rgba(255, 122, 217, 0.5),
+      inset 0 2px 8px rgba(255,255,255,0.5);
+    background:
+      radial-gradient(120% 120% at 30% 20%, #ffc2ec 0%, var(--accent-3) 45%, var(--accent-2) 100%);
+  }
+
+  .mic-icon { width: 56px; height: 56px; color: #fff; }
+
+  /* 录音时的音量律动条（在麦克风下方） */
+  .eq {
+    position: absolute;
+    bottom: 30px;
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 34px;
+    opacity: 0;
+    transition: opacity .3s ease;
+  }
+  .mic-wrap.recording .eq { opacity: 1; }
+  .eq span {
+    width: 4px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--accent-3), var(--accent));
+    transform-origin: bottom;
+  }
+
+  /* 飘出的音符 */
+  .notes-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 4;
+  }
+  .note {
+    position: absolute;
+    left: 50%;
+    bottom: 90px;
+    font-size: 26px;
+    color: var(--accent);
+    opacity: 0;
+    will-change: transform, opacity;
+    text-shadow: 0 0 12px rgba(185,139,255,0.8);
+  }
+  @keyframes floatNote {
+    0% { opacity: 0; transform: translate(-50%, 0) scale(.5) rotate(0deg); }
+    15% { opacity: 1; }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -260px) scale(1.1) rotate(var(--rot)); }
+  }
+
+  .hint {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    min-height: 22px;
+    margin-bottom: 6px;
+  }
+  .timer {
+    font-variant-numeric: tabular-nums;
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+    min-height: 48px;
+    opacity: 0;
+    transition: opacity .3s ease;
+  }
+  .timer.show { opacity: 1; }
+  .timer small { font-size: 16px; color: var(--text-dim); font-weight: 500; }
+
+  .record-foot {
+    width: 100%;
+    text-align: center;
+    padding-bottom: 6px;
+  }
+  .press-label {
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 600;
+    margin-top: 14px;
+  }
+  .sub-hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  /* =========================================================
+     SCREEN 2 · 完善信息
+     ========================================================= */
+  #screen-details { overflow-y: auto; padding-top: 56px; }
+  #screen-details::-webkit-scrollbar { display: none; }
+
+  .d-head { margin-bottom: 18px; }
+  .d-head h2 { font-size: 21px; margin: 0 0 6px; font-weight: 700; }
+  .d-head p { margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.5; }
+
+  /* 录音回放卡片 */
+  .playback {
+    background: linear-gradient(135deg, rgba(185,139,255,0.16), rgba(106,92,255,0.10));
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .play-btn {
+    flex: none;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: radial-gradient(120% 120% at 30% 20%, #c9a9ff, var(--accent-2) 70%, #4a3acc);
+    box-shadow: 0 8px 20px rgba(106,92,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+  }
+  .pb-mid { flex: 1; min-width: 0; }
+  .pb-wave {
+    display: flex; align-items: center; gap: 3px; height: 26px; margin-bottom: 6px;
+  }
+  .pb-wave span {
+    flex: 1;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    border-radius: 2px;
+    opacity: .8;
+  }
+  .pb-meta { font-size: 12px; color: var(--text-dim); }
+  .rerecord {
+    flex: none;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+
+  .field { margin-bottom: 20px; }
+  .field-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600; margin-bottom: 10px;
+  }
+  .optional-tag {
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(185,139,255,0.14);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--card-border);
+    background: var(--card);
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .chip.active {
+    background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 6px 16px rgba(106,92,255,0.4);
+  }
+
+  .segmented {
+    display: flex;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .segmented button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 9px 0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .segmented button.active {
+    background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+    color: #fff;
+  }
+
+  .ta, .inp {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 12px 14px;
+    resize: none;
+    font-family: inherit;
+  }
+  .ta:focus, .inp:focus { outline: none; border-color: var(--accent); }
+  .ta::placeholder, .inp::placeholder { color: rgba(179,168,214,0.55); }
+  .ta { min-height: 76px; }
+
+  .actions { margin-top: 8px; padding-bottom: 8px; }
+  .primary {
+    width: 100%;
+    border: none;
+    border-radius: 16px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+    box-shadow: 0 14px 30px rgba(106,92,255,0.45);
+  }
+  .ghost {
+    width: 100%;
+    margin-top: 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px;
+  }
+
+  /* =========================================================
+     SCREEN 3 · 生成中 / 结果（简单示意）
+     ========================================================= */
+  #screen-result { justify-content: center; align-items: center; text-align: center; }
+  .spinner {
+    width: 84px; height: 84px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent-3);
+    animation: spin 1s linear infinite;
+    margin-bottom: 24px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #screen-result h2 { margin: 0 0 8px; font-size: 20px; }
+  #screen-result p { color: var(--text-dim); font-size: 14px; margin: 0 0 28px; }
+  .result-card {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 22px;
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .result-card .play-big {
+    width: 64px; height: 64px; border-radius: 50%; border: none;
+    background: radial-gradient(120% 120% at 30% 20%, #c9a9ff, var(--accent-2) 70%, #4a3acc);
+    color: #fff; cursor: pointer; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 24px rgba(106,92,255,0.5);
+  }
+  .back-link {
+    margin-top: 22px; background: transparent; border: none; color: var(--text-dim); font-size: 14px; cursor: pointer;
+  }
+
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span>哼唱成歌</span>
+    <span>●●● ▮</span>
+  </div>
+
+  <!-- ===================== SCREEN 1: 录音 ===================== -->
+  <section class="screen active" id="screen-record">
+    <div class="brand">
+      <h1>哼一段，变成歌</h1>
+      <p>按住下面的麦克风，哼出你的旋律</p>
+    </div>
+
+    <div class="stage">
+      <div class="notes-layer" id="notesLayer"></div>
+      <div class="mic-wrap" id="micWrap">
+        <div class="halo"></div>
+        <div class="ripple"></div>
+        <div class="ripple"></div>
+        <div class="ripple"></div>
+        <button class="mic-btn" id="micBtn" aria-label="按住录音">
+          <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(255,255,255,0.18)"></rect>
+            <path d="M5 11a7 7 0 0 0 14 0"></path>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="8" y1="22" x2="16" y2="22"></line>
+          </svg>
+        </button>
+        <div class="eq" id="eq">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="record-foot">
+      <div class="timer" id="timer">0.0<small>s</small></div>
+      <div class="hint" id="hint">按住开始 · 松开结束</div>
+      <div class="press-label">🎤 按住录音</div>
+      <div class="sub-hint">建议 6–60 秒，先哼主歌或副歌都可以</div>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 2: 完善信息 ===================== -->
+  <section class="screen" id="screen-details">
+    <div class="d-head">
+      <h2>完善歌曲信息</h2>
+      <p>下面的内容<strong>全部可选</strong>。什么都不填也行，我们会根据你的哼唱自动创作 🎶</p>
+    </div>
+
+    <div class="playback">
+      <button class="play-btn" id="pbPlay" aria-label="试听">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <div class="pb-mid">
+        <div class="pb-wave" id="pbWave"></div>
+        <div class="pb-meta" id="pbMeta">我的哼唱 · 0.0 秒</div>
+      </div>
+      <button class="rerecord" id="rerecord">重新录制</button>
+    </div>
+
+    <div class="field">
+      <div class="field-label">曲风 <span class="optional-tag">可选</span></div>
+      <div class="chips" data-single="false">
+        <div class="chip">流行</div>
+        <div class="chip">抒情</div>
+        <div class="chip">民谣</div>
+        <div class="chip">R&B</div>
+        <div class="chip">摇滚</div>
+        <div class="chip">电子</div>
+        <div class="chip">古风</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">情绪 <span class="optional-tag">可选</span></div>
+      <div class="chips" data-single="false">
+        <div class="chip">温暖</div>
+        <div class="chip">治愈</div>
+        <div class="chip">忧伤</div>
+        <div class="chip">热血</div>
+        <div class="chip">浪漫</div>
+        <div class="chip">梦幻</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">语言 <span class="optional-tag">可选</span></div>
+      <div class="segmented" data-name="lang">
+        <button class="active">自动</button>
+        <button>中文</button>
+        <button>英文</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">人声 <span class="optional-tag">可选</span></div>
+      <div class="segmented" data-name="gender">
+        <button class="active">自动</button>
+        <button>女声</button>
+        <button>男声</button>
+        <button>混合</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">主题 / 想表达的故事 <span class="optional-tag">可选</span></div>
+      <textarea class="ta" placeholder="例如：写给毕业那年的夏天，关于离别和期待…"></textarea>
+    </div>
+
+    <div class="field">
+      <div class="field-label">歌词片段 <span class="optional-tag">可选</span></div>
+      <textarea class="ta" placeholder="有想好的词可以写在这里，我们会帮你扩展成完整歌词"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="generateBtn">生成 30 秒 demo</button>
+      <button class="ghost" id="backToRecord">← 返回重新录制</button>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 3: 生成中 / 结果 ===================== -->
+  <section class="screen" id="screen-result">
+    <div class="spinner" id="spinner"></div>
+    <h2 id="resultTitle">正在为你创作…</h2>
+    <p id="resultDesc">AI 正在把你的哼唱变成一首歌，大约需要 20–40 秒</p>
+
+    <div class="result-card" id="resultCard">
+      <button class="play-big">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <div style="font-weight:700;margin-bottom:4px;">你的 demo 已生成 🎉</div>
+      <div style="color:var(--text-dim);font-size:13px;">30 秒 · 流行 · 温暖</div>
+    </div>
+
+    <button class="back-link" id="resultBack">← 再哼一首</button>
+  </section>
+</div>
+
+<script>
+(function () {
+  var screens = {
+    record: document.getElementById('screen-record'),
+    details: document.getElementById('screen-details'),
+    result: document.getElementById('screen-result')
+  };
+  function show(name) {
+    Object.keys(screens).forEach(function (k) {
+      screens[k].classList.toggle('active', k === name);
+    });
+  }
+
+  /* ---------- 录音逻辑（含真实麦克风可视化，失败则模拟） ---------- */
+  var micWrap = document.getElementById('micWrap');
+  var micBtn = document.getElementById('micBtn');
+  var eq = document.getElementById('eq');
+  var eqBars = eq.querySelectorAll('span');
+  var timerEl = document.getElementById('timer');
+  var hint = document.getElementById('hint');
+  var notesLayer = document.getElementById('notesLayer');
+
+  var recording = false;
+  var startTime = 0;
+  var rafId = null;
+  var noteTimer = null;
+  var lastDuration = 0;
+
+  var audioCtx = null, analyser = null, micStream = null, dataArr = null;
+
+  function fmt(sec) {
+    return sec.toFixed(1);
+  }
+
+  function spawnNote(intensity) {
+    var glyphs = ['♪', '♫', '♬', '♩', '𝄞'];
+    var n = document.createElement('div');
+    n.className = 'note';
+    n.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
+    var dx = (Math.random() * 160 - 80) + 'px';
+    var rot = (Math.random() * 80 - 40) + 'deg';
+    var dur = 2.2 + Math.random() * 1.3;
+    var size = 18 + (intensity || 0.5) * 26;
+    n.style.setProperty('--dx', dx);
+    n.style.setProperty('--rot', rot);
+    n.style.fontSize = size + 'px';
+    n.style.left = (45 + Math.random() * 10) + '%';
+    n.style.animation = 'floatNote ' + dur + 's ease-out forwards';
+    notesLayer.appendChild(n);
+    setTimeout(function () { n.remove(); }, dur * 1000 + 50);
+  }
+
+  function visualize() {
+    if (!recording) return;
+    var level = 0.4;
+    if (analyser && dataArr) {
+      analyser.getByteFrequencyData(dataArr);
+      var sum = 0;
+      for (var i = 0; i < dataArr.length; i++) sum += dataArr[i];
+      level = Math.min(1, (sum / dataArr.length) / 90);
+    } else {
+      // 没有麦克风权限时的模拟律动
+      level = 0.3 + Math.abs(Math.sin(Date.now() / 180)) * 0.6 * Math.random();
+    }
+    eqBars.forEach(function (bar, idx) {
+      var h = 6 + level * (18 + Math.random() * 18) * (0.6 + Math.abs(Math.sin((Date.now()/200) + idx)));
+      bar.style.height = Math.min(34, h) + 'px';
+    });
+
+    var elapsed = (Date.now() - startTime) / 1000;
+    timerEl.innerHTML = fmt(elapsed) + '<small>s</small>';
+    rafId = requestAnimationFrame(visualize);
+  }
+
+  function startRecord() {
+    if (recording) return;
+    recording = true;
+    startTime = Date.now();
+    micWrap.classList.add('recording');
+    timerEl.classList.add('show');
+    hint.textContent = '正在聆听你的旋律…';
+
+    // 尝试真实麦克风
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        micStream = stream;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var src = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        dataArr = new Uint8Array(analyser.frequencyBinCount);
+        src.connect(analyser);
+      }).catch(function () { /* 用模拟模式 */ });
+    }
+
+    visualize();
+
+    // 持续根据音量喷音符
+    noteTimer = setInterval(function () {
+      var level = 0.6;
+      if (analyser && dataArr) {
+        analyser.getByteFrequencyData(dataArr);
+        var sum = 0;
+        for (var i = 0; i < dataArr.length; i++) sum += dataArr[i];
+        level = Math.min(1, (sum / dataArr.length) / 70);
+      } else {
+        level = 0.4 + Math.random() * 0.5;
+      }
+      var count = level > 0.65 ? 2 : 1;
+      if (level > 0.18) for (var c = 0; c < count; c++) spawnNote(level);
+    }, 260);
+  }
+
+  function stopRecord() {
+    if (!recording) return;
+    recording = false;
+    lastDuration = (Date.now() - startTime) / 1000;
+    micWrap.classList.remove('recording');
+    hint.textContent = '按住开始 · 松开结束';
+    if (rafId) cancelAnimationFrame(rafId);
+    if (noteTimer) clearInterval(noteTimer);
+    if (micStream) { micStream.getTracks().forEach(function (t) { t.stop(); }); micStream = null; }
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    analyser = null;
+
+    if (lastDuration < 1) {
+      // 太短，给一点反馈，留在本页
+      hint.textContent = '太短啦，多哼一会儿试试';
+      timerEl.classList.remove('show');
+      return;
+    }
+    goToDetails(lastDuration);
+  }
+
+  micBtn.addEventListener('mousedown', startRecord);
+  micBtn.addEventListener('touchstart', function (e) { e.preventDefault(); startRecord(); }, { passive: false });
+  window.addEventListener('mouseup', stopRecord);
+  micBtn.addEventListener('touchend', function (e) { e.preventDefault(); stopRecord(); }, { passive: false });
+
+  /* ---------- 进入详情页 ---------- */
+  var pbMeta = document.getElementById('pbMeta');
+  var pbWave = document.getElementById('pbWave');
+  function buildWave() {
+    pbWave.innerHTML = '';
+    for (var i = 0; i < 40; i++) {
+      var s = document.createElement('span');
+      s.style.height = (6 + Math.random() * 20) + 'px';
+      pbWave.appendChild(s);
+    }
+  }
+  function goToDetails(dur) {
+    pbMeta.textContent = '我的哼唱 · ' + fmt(dur) + ' 秒';
+    buildWave();
+    timerEl.classList.remove('show');
+    timerEl.innerHTML = '0.0<small>s</small>';
+    show('details');
+    screens.details.scrollTop = 0;
+  }
+
+  /* ---------- 详情页交互 ---------- */
+  document.querySelectorAll('.chips').forEach(function (group) {
+    group.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('chip')) return;
+      e.target.classList.toggle('active');
+    });
+  });
+  document.querySelectorAll('.segmented').forEach(function (seg) {
+    seg.addEventListener('click', function (e) {
+      if (e.target.tagName !== 'BUTTON') return;
+      seg.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+      e.target.classList.add('active');
+    });
+  });
+
+  document.getElementById('rerecord').addEventListener('click', function () { show('record'); });
+  document.getElementById('backToRecord').addEventListener('click', function () { show('record'); });
+
+  document.getElementById('pbPlay').addEventListener('click', function () {
+    var bars = pbWave.querySelectorAll('span');
+    bars.forEach(function (b, i) {
+      b.animate(
+        [{ transform: 'scaleY(1)' }, { transform: 'scaleY(1.6)' }, { transform: 'scaleY(1)' }],
+        { duration: 600, delay: i * 20, iterations: 1 }
+      );
+    });
+  });
+
+  /* ---------- 生成结果 ---------- */
+  var spinner = document.getElementById('spinner');
+  var resultTitle = document.getElementById('resultTitle');
+  var resultDesc = document.getElementById('resultDesc');
+  var resultCard = document.getElementById('resultCard');
+
+  document.getElementById('generateBtn').addEventListener('click', function () {
+    show('result');
+    spinner.style.display = 'block';
+    resultCard.classList.remove('show');
+    resultTitle.textContent = '正在为你创作…';
+    resultDesc.textContent = 'AI 正在把你的哼唱变成一首歌，大约需要 20–40 秒';
+    setTimeout(function () {
+      spinner.style.display = 'none';
+      resultTitle.textContent = '完成！';
+      resultDesc.textContent = '点击播放，听听你的 demo';
+      resultCard.classList.add('show');
+    }, 2600);
+  });
+  document.getElementById('resultBack').addEventListener('click', function () { show('record'); });
+
+  // 便于截图/直达：支持 #details / #result
+  if (location.hash === '#details') { buildWave(); pbMeta.textContent = '我的哼唱 · 12.4 秒'; show('details'); }
+  if (location.hash === '#result') { spinner.style.display = 'none'; resultTitle.textContent = '完成！'; resultDesc.textContent = '点击播放，听听你的 demo'; resultCard.classList.add('show'); show('result'); }
+})();
+</script>
+</body>
+</html>

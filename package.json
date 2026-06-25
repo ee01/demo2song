@@ -1,0 +1,29 @@
+{
+  "name": "demo2song",
+  "private": true,
+  "version": "0.1.0",
+  "description": "WeChat mini program MVP for humming-to-song generation.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "cloudbase:init": "npm run cloudbase:init -w @demo2song/data",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "config:validate": "npm run config:validate -w @demo2song/config",
+    "dev:api": "npm run dev -w @demo2song/api",
+    "dev:worker": "npm run dev -w @demo2song/worker",
+    "dev:mp": "npm run dev:weapp -w @demo2song/mp-weixin"
+  },
+  "resolutions": {
+    "sass": "1.69.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.9"
+  }
+}

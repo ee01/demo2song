@@ -1,0 +1,37 @@
+{
+  "name": "@demo2song/mp-weixin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:weapp": "taro build --type weapp --watch",
+    "build": "taro build --type weapp",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@demo2song/shared": "0.1.0",
+    "@tarojs/components": "^4.0.9",
+    "@tarojs/helper": "^4.0.9",
+    "@tarojs/plugin-framework-react": "^4.0.9",
+    "@tarojs/plugin-platform-weapp": "^4.0.9",
+    "@tarojs/react": "^4.0.9",
+    "@tarojs/runtime": "^4.0.9",
+    "@tarojs/service": "^4.2.0",
+    "@tarojs/shared": "^4.2.0",
+    "@tarojs/taro": "^4.0.9",
+    "@tarojs/webpack5-runner": "^4.2.0",
+    "dotenv": "^16.4.7",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "webpack": "5.91.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-react": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
+    "@tarojs/cli": "^4.0.9",
+    "@types/react": "^18.3.3",
+    "typescript": "^5.8.3"
+  }
+}

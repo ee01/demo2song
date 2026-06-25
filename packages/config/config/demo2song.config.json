@@ -1,0 +1,37 @@
+{
+  "$schema": "./config.schema.json",
+  "defaultProvider": "minimax",
+  "models": {
+    "minimax": {
+      "demoModel": "music-cover",
+      "fullModel": "music-cover",
+      "allowPaidModels": true
+    },
+    "mureka": {
+      "demoModel": "auto",
+      "fullModel": "auto",
+      "allowPaidModels": false
+    }
+  },
+  "limits": {
+    "minRecordingSeconds": 6,
+    "maxRecordingSeconds": 60,
+    "demoTargetSeconds": 30,
+    "fullSongMinSeconds": 120,
+    "fullSongMaxSeconds": 240,
+    "dailyDemoJobsPerUser": 3,
+    "dailyExtendJobsPerUser": 1,
+    "refundQuotaOnProviderFailure": true
+  },
+  "storage": {
+    "provider": "cos",
+    "recordingRetention": "permanent",
+    "songRetention": "permanent",
+    "signedUrlTtlSeconds": 900
+  },
+  "features": {
+    "enableExtendSong": false,
+    "enableApproximateMinimaxExtend": false,
+    "enableCommercialUseGate": false
+  }
+}
