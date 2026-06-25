@@ -40,9 +40,10 @@ export interface CreateDemoSongInput {
   targetDurationSeconds: number;
 }
 
-export interface ExtendSongInput {
+export interface CreateFullSongInput {
   userId: string;
-  demoSong: ProviderAudioInput;
+  recording: ProviderAudioInput;
+  demoSong?: ProviderAudioInput;
   prompt: SongPromptInput;
   expandedLyrics: string;
   targetDurationSeconds: number;
@@ -58,6 +59,6 @@ export interface NormalizedProviderError {
 export interface MusicProvider {
   getCapabilities(): ProviderCapabilities;
   createDemoSong(input: CreateDemoSongInput): Promise<ProviderSongResult>;
-  extendSong(input: ExtendSongInput): Promise<ProviderSongResult>;
+  createFullSong(input: CreateFullSongInput): Promise<ProviderSongResult>;
   normalizeError(error: unknown): NormalizedProviderError;
 }

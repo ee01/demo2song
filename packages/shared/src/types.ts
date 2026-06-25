@@ -1,6 +1,6 @@
 export type ProviderName = "minimax" | "mureka";
 
-export type SongJobKind = "demo" | "extend";
+export type SongJobKind = "demo" | "full";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed";
 
@@ -57,11 +57,40 @@ export interface CreateDemoJobResponse {
   status: JobStatus;
 }
 
-export interface ExtendSongJobResponse {
+export interface CreateFullJobRequest {
+  prompt?: Partial<SongPromptInput>;
+}
+
+export interface CreateFullJobResponse {
   jobId: string;
   songId: string;
   status: JobStatus;
-  capability: "supported" | "approximate";
+  mode: "regenerate" | "extend";
+}
+
+export interface SongDetail extends SongBrief {
+  recordingId: string;
+  recordingPlaybackUrl?: string;
+  recordingDurationSeconds?: number;
+  parentDemoId?: string;
+  parentDemoPlaybackUrl?: string;
+  hasFull?: boolean;
+  prompt?: SongPromptInput;
+}
+
+export interface MySongsResponse {
+  demos: SongBrief[];
+  fullSongs: SongBrief[];
+}
+
+export interface PublicSong {
+  id: string;
+  stage: SongStage;
+  status: SongStatus;
+  title?: string;
+  durationSeconds?: number;
+  lyrics?: string;
+  playbackUrl?: string;
 }
 
 export interface JobDetail {
@@ -80,5 +109,5 @@ export interface PublicAppConfig {
   minRecordingSeconds: number;
   maxRecordingSeconds: number;
   demoTargetSeconds: number;
-  enableExtendSong: boolean;
+  enableFullSong: boolean;
 }

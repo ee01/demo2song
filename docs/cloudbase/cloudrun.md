@@ -1,55 +1,86 @@
 # WeChat CloudRun deployment
 
-Deploy two CloudRun services.
+Deploy two CloudRun services using **Dockerfile** (recommended). CLI: `yarn deploy`.
 
-## API service
+## Why Dockerfile
 
-- Service name: `demo2song-api`
-- Root directory: repository root
-- Build command: `yarn install --frozen-lockfile && yarn build`
-- Start command: `node apps/api/dist/apps/api/src/server.js`
-- Port: `3100` or the value of `API_PORT`
+CloudBase builds a Docker image from the repo. Without `Dockerfile.api` / `Dockerfile.worker`, deploy fails with:
+
+`open Dockerfile: no such file or directory`
+
+Build and start commands live **inside the Dockerfiles**, not in separate shell fields, when using this flow.
+
+## CLI deploy
+
+```bash
+yarn deploy
+```
+
+Uses:
+
+| Service | Dockerfile | Container port |
+|---------|------------|----------------|
+| `demo2song-api` | `Dockerfile.api` | `3000` |
+| `demo2song-worker` | `Dockerfile.worker` | `8080` (placeholder; worker has no HTTP) |
+
+API listens on `API_PORT=3000` inside the image (matches cloud default port).
+
+## Console: where to configure port / env
+
+Open [CloudRun console](https://tcb.cloud.tencent.com/dev?envId=cloud1-d1g1m1uze12293bcd#/platform-run):
+
+1. Click service (`demo2song-api` or `demo2song-worker`)
+2. **服务设置** → **基本信息** → **监听端口** → set API to `3000`
+3. **服务设置** → **环境变量** → add secrets from `.env` (see below)
+4. **部署发布** → **新建版本** → upload method **本地代码** → Dockerfile name:
+   - API: `Dockerfile.api`
+   - Worker: `Dockerfile.worker`
+5. After deploy, copy **默认域名** for `TARO_APP_API_BASE`
+
+If you use **无 Dockerfile** mode instead, the console shows:
+
+- **构建命令** / **启动命令** / **监听端口** on the version form
+
+Prefer Dockerfile mode for this monorepo.
+
+## API service (`demo2song-api`)
+
+- Start command (in image): `node apps/api/dist/apps/api/src/server.js`
+- Port: `3000`
 - Health check: `GET /health`
 
-Environment variables:
+Required environment variables (console **服务设置 → 环境变量**):
 
 - `CLOUDBASE_ENV_ID`
-- `CLOUDBASE_SECRET_ID` optional for local/non-platform runs
-- `CLOUDBASE_SECRET_KEY` optional for local/non-platform runs
-- `API_PORT`
-- `WECHAT_APP_ID`
-- `WECHAT_APP_SECRET`
-- `WECHAT_LOGIN_STRICT=true`
-- `COS_SECRET_ID`
-- `COS_SECRET_KEY`
-- `COS_BUCKET`
-- `COS_REGION`
+- `WECHAT_APP_ID`, `WECHAT_APP_SECRET`, `WECHAT_LOGIN_STRICT=true`
+- `COS_SECRET_ID`, `COS_SECRET_KEY`, `COS_BUCKET`, `COS_REGION`
 - `COS_CDN_BASE_URL` optional
+- `API_PORT=3000` optional if image default is used
 
-## Worker service
+## Worker service (`demo2song-worker`)
 
-- Service name: `demo2song-worker`
-- Root directory: repository root
-- Build command: `yarn install --frozen-lockfile && yarn build`
-- Start command: `node apps/worker/dist/apps/worker/src/worker.js`
-- Public access: disabled if the platform allows it
-- Health check: process liveness; worker has no HTTP endpoint in the MVP
-- Runtime dependency: `ffmpeg` must be installed in the worker image/runtime so uploaded WebM/Opus recordings can be normalized to MP3 before provider calls.
+- Start command (in image): `node apps/worker/dist/apps/worker/src/worker.js`
+- Image includes `ffmpeg`
+- Public access: optional off
 
-Environment variables:
+Required environment variables:
 
 - `CLOUDBASE_ENV_ID`
-- `CLOUDBASE_SECRET_ID` optional for local/non-platform runs
-- `CLOUDBASE_SECRET_KEY` optional for local/non-platform runs
-- `WORKER_POLL_INTERVAL_MS`
-- `COS_SECRET_ID`
-- `COS_SECRET_KEY`
-- `COS_BUCKET`
-- `COS_REGION`
-- `MINIMAX_API_KEY`
-- `MUREKA_API_KEY` optional unless `defaultProvider` is `mureka`
+- `COS_*`, `MINIMAX_API_KEY`, optional `MUREKA_API_KEY`
+- `WORKER_POLL_INTERVAL_MS` optional
 - `PROVIDER_MOCK_MODE` optional for smoke tests
 
 ## Mini program
 
-Set `TARO_APP_API_BASE` to the API service domain before building the mini program for a deployed environment.
+After API is live:
+
+```bash
+TARO_APP_API_BASE="https://<demo2song-api-default-domain>" yarn build
+```
+
+Verify:
+
+```bash
+curl -sS "https://<domain>/health"
+# {"ok":true}
+```

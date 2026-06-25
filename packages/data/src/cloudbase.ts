@@ -64,6 +64,35 @@ export class CloudBaseRepository implements Demo2SongRepository {
     return this.findOne<SongRecord>("songs", { id });
   }
 
+  async listSongsForUser(userId: string): Promise<SongRecord[]> {
+    const result = await this.collection("songs")
+      .where({ userId })
+      .orderBy("createdAt", "desc")
+      .limit(200)
+      .get();
+    return ((result.data as unknown[]) ?? [])
+      .map((item) => this.normalize<SongRecord>(item))
+      .filter((item): item is SongRecord => Boolean(item));
+  }
+
+  async listFullSongsForDemo(demoId: string, userId: string): Promise<SongRecord[]> {
+    const result = await this.collection("songs")
+      .where({ userId, parentSongId: demoId, stage: "full" })
+      .orderBy("createdAt", "desc")
+      .limit(200)
+      .get();
+    return ((result.data as unknown[]) ?? [])
+      .map((item) => this.normalize<SongRecord>(item))
+      .filter((item): item is SongRecord => Boolean(item));
+  }
+
+  async countReadyFullForDemo(demoId: string): Promise<number> {
+    const result = await this.collection("songs")
+      .where({ parentSongId: demoId, stage: "full", status: "ready" })
+      .count();
+    return Number(result.total ?? 0);
+  }
+
   async updateSong(id: string, patch: Partial<SongRecord>): Promise<void> {
     await this.updateById("songs", id, patch);
   }

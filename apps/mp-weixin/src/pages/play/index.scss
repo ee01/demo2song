@@ -1,0 +1,36 @@
+@import "../../styles/theme.scss";
+
+.play-screen {
+  padding: 80px 44px 64px;
+  justify-content: space-between;
+}
+.play-screen .brand {
+  text-align: center;
+}
+.play-screen .brand-title {
+  display: block;
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.play-screen .brand-sub {
+  display: block;
+  font-size: 25px;
+  color: #b3a8d6;
+}
+.play-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.play-title {
+  display: block;
+  text-align: center;
+  font-size: 38px;
+  font-weight: 700;
+  margin-bottom: 32px;
+}
+.play-cta {
+  margin-top: 40px;
+}

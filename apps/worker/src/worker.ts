@@ -1,10 +1,30 @@
-import { loadValidatedConfig } from "@demo2song/config";
+import { createServer } from "node:http";
 import type { SongPromptInput } from "@demo2song/shared";
-import { repository } from "./db.js";
-import { env } from "./env.js";
-import { createProvider } from "./providers/index.js";
-import { WorkerCosStorage } from "./storage.js";
-import { normalizeReferenceAudioToMp3, providerResultToBuffer } from "./audio.js";
+
+// 立刻启动健康检查服务器 —— 必须在所有其他 import 之前完成，
+// 保证就算后续模块加载或 env 解析失败，云托管探针也能收到 200。
+const healthPort = Number(process.env.WORKER_PORT ?? 3000);
+await new Promise<void>((resolve) => {
+  createServer((req, res) => {
+    if (req.url === "/health" || req.url === "/") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+    res.writeHead(404).end();
+  }).listen(healthPort, () => {
+    console.log(`[worker] health server listening on :${healthPort}`);
+    resolve();
+  });
+});
+
+// 健康服务器已就绪，再加载业务模块（动态 import 保证顺序在上面之后）
+const { loadValidatedConfig } = await import("@demo2song/config");
+const { repository } = await import("./db.js");
+const { env } = await import("./env.js");
+const { createProvider } = await import("./providers/index.js");
+const { WorkerCosStorage } = await import("./storage.js");
+const { normalizeReferenceAudioToMp3, providerResultToBuffer } = await import("./audio.js");
 
 const config = loadValidatedConfig();
 const storage = new WorkerCosStorage();
@@ -23,10 +43,10 @@ async function processOneJob(): Promise<boolean> {
     const providerResult =
       job.kind === "demo"
         ? await createDemo(provider, job.userId, song.recordingId, prompt, song.lyrics ?? "")
-        : await createExtension(provider, job.userId, job.requestPayload, prompt, song.lyrics ?? "");
+        : await createFull(provider, job.userId, song.recordingId, job.requestPayload, prompt, song.lyrics ?? "");
 
     const audio = await providerResultToBuffer(providerResult);
-    const objectKey = `songs/${song.stage}/${job.userId}/${song.id}.mp3`;
+    const objectKey = `songs/${job.userId}/${song.recordingId}/${song.stage}/${song.id}.mp3`;
     await storage.putObject(objectKey, audio, providerResult.mimeType);
 
     await repository.updateSong(song.id, {
@@ -101,31 +121,48 @@ async function createDemo(
   });
 }
 
-async function createExtension(
+async function createFull(
   provider: ReturnType<typeof createProvider>,
   userId: string,
+  recordingId: string,
   requestPayload: unknown,
   prompt: SongPromptInput,
   expandedLyrics: string
 ) {
-  const parentSongId = String((requestPayload as { parentSongId?: string }).parentSongId ?? "");
-  const parentSong = await repository.getSongById(parentSongId);
-  if (!parentSong) {
-    throw new Error(`Parent demo song not found: ${parentSongId}`);
+  const recording = await repository.getRecordingById(recordingId);
+  if (!recording) {
+    throw new Error(`Recording not found: ${recordingId}`);
   }
-  if (!parentSong.objectKey) {
-    throw new Error("Parent demo song has no audio object");
+  const normalizedRecording = await normalizeReferenceAudioToMp3(await storage.getObject(recording.objectKey));
+  const recordingInput = {
+    objectKey: recording.objectKey,
+    signedUrl: await storage.getSignedUrl(recording.objectKey, config.storage.signedUrlTtlSeconds),
+    audioBase64: normalizedRecording.toString("base64"),
+    mimeType: "audio/mpeg",
+    durationSeconds: recording.durationSeconds
+  };
+
+  // Mureka 等支持真实续写的 provider 需要 demo 音频作为基底；minimax 则以录音重生成
+  let demoSong: typeof recordingInput | undefined;
+  if (provider.getCapabilities().supportsSongExtend) {
+    const parentSongId = String((requestPayload as { parentSongId?: string }).parentSongId ?? "");
+    const parentSong = parentSongId ? await repository.getSongById(parentSongId) : null;
+    if (parentSong?.objectKey) {
+      const normalizedDemo = await normalizeReferenceAudioToMp3(await storage.getObject(parentSong.objectKey));
+      demoSong = {
+        objectKey: parentSong.objectKey,
+        signedUrl: await storage.getSignedUrl(parentSong.objectKey, config.storage.signedUrlTtlSeconds),
+        audioBase64: normalizedDemo.toString("base64"),
+        mimeType: parentSong.mimeType ?? "audio/mpeg",
+        durationSeconds: parentSong.durationSeconds ?? config.limits.demoTargetSeconds
+      };
+    }
   }
-  const normalizedAudio = await normalizeReferenceAudioToMp3(await storage.getObject(parentSong.objectKey));
-  return provider.extendSong({
+
+  return provider.createFullSong({
     userId,
-    demoSong: {
-      objectKey: parentSong.objectKey,
-      signedUrl: await storage.getSignedUrl(parentSong.objectKey, config.storage.signedUrlTtlSeconds),
-      audioBase64: normalizedAudio.toString("base64"),
-      mimeType: parentSong.mimeType ?? "audio/mpeg",
-      durationSeconds: parentSong.durationSeconds ?? config.limits.demoTargetSeconds
-    },
+    recording: recordingInput,
+    demoSong,
     prompt,
     expandedLyrics,
     targetDurationSeconds: config.limits.fullSongMinSeconds

@@ -2,6 +2,58 @@
 
 This file records the local verification harness for future agents working on this repo. Do not commit or print secrets from `.env`.
 
+## Command Reference
+
+| 目的 | 命令 |
+|------|------|
+| **本地开发**：启动小程序热更新编译（API 指向 localhost） | `yarn dev` |
+| **本地开发**：启动 API 服务（端口 3100） | `yarn dev:api` |
+| **本地开发**：启动 Worker（真实 provider） | `yarn dev:worker` |
+| **本地开发**：启动 Worker（Mock 模式，不消耗配额） | `PROVIDER_MOCK_MODE=true yarn dev:worker` |
+| **小程序发布**：编译可上传版本（需先在 `.env` 设 `TARO_APP_API_BASE`） | `yarn build` |
+| **后端发布**：一键推送 api + worker 到云托管 | `yarn deploy` |
+| **后端发布**：单独部署 API | `yarn deploy:api` |
+| **后端发布**：单独部署 Worker | `yarn deploy:worker` |
+| **后端验证**：本地验证云托管构建是否可通过 | `yarn build:cloudrun` |
+| **静态检查** | `yarn typecheck && yarn test` |
+| **配置校验** | `yarn config:validate` |
+
+> `yarn dev` = `yarn dev:mp`，`yarn build` = 小程序生产编译，`yarn deploy` = `yarn deploy:cloudrun`
+
+## Agent Workflow: New Feature Completion
+
+When a new feature is completed, the agent MUST follow this sequence in order:
+
+1. **静态检查**（mandatory）
+
+   ```bash
+   yarn config:validate
+   yarn typecheck
+   yarn test
+   ```
+
+2. **本地端到端验证**（mandatory，见下方 E2E Validation 章节）
+
+3. **后端部署**（如需上线后端变更）
+
+   ```bash
+   yarn deploy          # 同时部署 api + worker
+   yarn deploy:api      # 仅部署 API
+   yarn deploy:worker   # 仅部署 Worker
+   ```
+
+   > **原则**：凡是配置或代码变更已经到达可线上验证的程度，agent 应直接执行部署，无需等待用户再次确认。
+
+4. **小程序生产编译并上传**（如小程序有变更）
+
+   ```bash
+   # 确保 .env 中 TARO_APP_API_BASE 已设为云托管域名
+   yarn build
+   # 然后在微信开发者工具中「上传」
+   ```
+
+Do not skip any step. If a step fails, fix the issue before proceeding.
+
 ## Workspace
 
 - Repository root: `/Users/esone.qiu/git/demo2song`
@@ -213,6 +265,114 @@ For faster mini program-only verification:
 ```bash
 npm run build -w @demo2song/mp-weixin
 ```
+
+## E2E Validation (Local End-to-End)
+
+After any backend change, run the full local chain to verify the flow:
+
+```bash
+# 1. Start API and worker in mock mode (separate terminals)
+yarn dev:api
+PROVIDER_MOCK_MODE=true yarn dev:worker
+
+# 2. Health check
+curl -sS http://127.0.0.1:3100/health
+
+# 3. Login → get userId
+USER_ID=$(curl -sS -X POST http://127.0.0.1:3100/auth/wechat-login \
+  -H 'content-type: application/json' \
+  --data '{"code":"test-code"}' | node -e "process.stdin.setEncoding('utf8');let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>console.log(JSON.parse(b).userId))")
+echo "userId=$USER_ID"
+
+# 4. Upload a recording (use any mp3 file)
+RECORDING=$(curl -sS -X POST http://127.0.0.1:3100/recordings \
+  -H "x-user-id: $USER_ID" \
+  -F "audio=@/path/to/test.mp3")
+RECORDING_ID=$(echo $RECORDING | node -e "process.stdin.setEncoding('utf8');let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>console.log(JSON.parse(b).recording?.id))")
+echo "recordingId=$RECORDING_ID"
+
+# 5. Submit generation job
+JOB=$(curl -sS -X POST http://127.0.0.1:3100/songs/demo-jobs \
+  -H "x-user-id: $USER_ID" \
+  -H 'content-type: application/json' \
+  --data "{\"recordingId\":\"$RECORDING_ID\",\"prompt\":\"e2e test\"}")
+echo "$JOB"
+```
+
+In mock mode the worker completes immediately and marks the song ready. Verify:
+- Worker log shows job picked up and completed
+- Song record in CloudBase shows `status: ready`
+- `GET /songs/:id/play` returns a signed COS URL
+
+## Deployment: WeChat CloudRun (云托管)
+
+### 一键部署
+
+确保 `.env` 中已配置所有服务密钥，然后：
+
+```bash
+yarn deploy
+```
+
+**脚本工作原理（`scripts/deploy-cloudrun.mjs`）：**
+
+1. 读取 `.env` 中所有环境变量
+2. 从 `Dockerfile.api` / `Dockerfile.worker` 模板生成临时 `Dockerfile`（根目录），在最后一个 `FROM` 之后自动插入 `ENV KEY="value"` 层
+3. 用 `tcb cloudrun deploy` 上传源码到云端构建（含注入了环境变量的 Dockerfile）
+4. 部署完成后删除临时 `Dockerfile`（已加入 `.gitignore`，不会进入版本历史）
+
+云端 API **监听端口 3000**（本地 dev 用 3100）。
+
+控制台：https://tcb.cloud.tencent.com/dev?envId=cloud1-d1g1m1uze12293bcd#/platform-run
+
+**依赖前置条件**（仅需一次）：在控制台手动开通云托管后，服务会自动创建。
+
+### 部署后验证
+
+### 部署后验证
+
+```bash
+CLOUD_API=https://demo2song-api-4045882-1446906548.ap-shanghai.run.tcloudbase.com
+curl -sS $CLOUD_API/health
+curl -sS $CLOUD_API/config/public
+```
+
+## Mini Program Production Build
+
+### 关键说明
+
+`yarn dev`（即 `yarn dev:mp`）和 `yarn build`（不设 `TARO_APP_API_BASE`）编译出的版本 `__API_BASE__` 指向 `http://localhost:3100`，**仅适用于本地开发和 DevTools 调试，不能上传发布**。
+
+### 生产版本编译步骤
+
+在 `.env` 中设置云托管 API 域名，然后编译：
+
+```bash
+# 在 .env 中设置（或直接内联）
+# TARO_APP_API_BASE=https://demo2song-api-<hash>.ap-guangzhou.app.tcloudbase.com
+
+yarn build
+
+# 内联方式（不改动 .env）：
+TARO_APP_API_BASE=https://your-cloudrun-api-domain.com yarn build
+```
+
+编译产物在 `apps/mp-weixin/dist`，通过微信开发者工具「上传」功能提交到微信后台。
+
+### 验证编译产物指向正确地址
+
+```bash
+rg -n "__API_BASE__|localhost" apps/mp-weixin/dist -g '!**/*.map' | head -5
+```
+
+确认输出中 `__API_BASE__` 已替换为云托管域名，不含 `localhost`。
+
+### 上传代码流程
+
+1. 完成生产编译，确认无 `localhost` 泄漏
+2. 微信开发者工具 → 打开 `apps/mp-weixin` 项目
+3. 点击「上传」→ 填写版本号和备注
+4. 登录[微信公众平台](https://mp.weixin.qq.com) → 版本管理 → 提交审核或设为体验版
 
 ## Common Issues
 

@@ -4,6 +4,7 @@ import Fastify from "fastify";
 import { authRoutes } from "./routes/auth.js";
 import { configRoutes } from "./routes/config.js";
 import { jobRoutes } from "./routes/jobs.js";
+import { publicRoutes } from "./routes/public.js";
 import { recordingRoutes } from "./routes/recordings.js";
 import { songRoutes } from "./routes/songs.js";
 
@@ -24,6 +25,7 @@ export async function buildApp() {
   await app.register(recordingRoutes);
   await app.register(songRoutes);
   await app.register(jobRoutes);
+  await app.register(publicRoutes);
 
   return app;
 }

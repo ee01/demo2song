@@ -1,30 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Text, Textarea, View } from "@tarojs/components";
-import Taro from "@tarojs/taro";
-import type { JobDetail, PublicAppConfig, SongBrief, SongLanguage, VocalGender } from "@demo2song/shared";
+import { useEffect, useRef, useState } from "react";
+import { Button, Text, View } from "@tarojs/components";
+import Taro, { useShareAppMessage } from "@tarojs/taro";
+import type { JobDetail, PublicAppConfig, SongBrief } from "@demo2song/shared";
+import SongInfoForm from "../../components/SongInfoForm";
+import PlayerCard from "../../components/PlayerCard";
+import { useAudioPlayer } from "../../hooks/useAudioPlayer";
+import { emptyPromptForm, promptFormToInput, type PromptForm } from "../../constants";
+import { API_BASE, authHeader, ensureLogin, request } from "../../utils/request";
+import { saveSong } from "../../utils/download";
 import "./index.scss";
 
-const API_BASE = __API_BASE__;
 const recorder = Taro.getRecorderManager();
 
 type GenerationState = "idle" | "recorded" | "uploading" | "queued" | "generating" | "ready" | "failed";
 type Screen = "record" | "details" | "result";
-
-const styleOptions = ["流行", "抒情", "民谣", "R&B", "摇滚", "电子", "古风"];
-const moodOptions = ["温暖", "治愈", "忧伤", "热血", "浪漫", "梦幻"];
-
-const languageOptions: Array<{ label: string; value: SongLanguage }> = [
-  { label: "自动", value: "auto" },
-  { label: "中文", value: "zh" },
-  { label: "英文", value: "en" }
-];
-
-const genderOptions: Array<{ label: string; value: VocalGender }> = [
-  { label: "自动", value: "auto" },
-  { label: "女声", value: "female" },
-  { label: "男声", value: "male" },
-  { label: "混合", value: "mixed" }
-];
 
 const noteGlyphs = ["♪", "♫", "♬", "♩"];
 const noteVariants = ["note-a", "note-b", "note-c"];
@@ -37,8 +26,6 @@ interface FloatingNote {
   size: number;
 }
 
-const DEFAULT_STYLE = "流行，自然真诚的人声";
-
 export default function IndexPage() {
   const [userId, setUserId] = useState<string>();
   const [screen, setScreen] = useState<Screen>("record");
@@ -50,26 +37,17 @@ export default function IndexPage() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [notes, setNotes] = useState<FloatingNote[]>([]);
 
-  const [previewing, setPreviewing] = useState(false);
-  const [previewProgress, setPreviewProgress] = useState(0);
-  const previewAudioRef = useRef<Taro.InnerAudioContext>();
-
-  const [styleSel, setStyleSel] = useState<string[]>([]);
-  const [moodSel, setMoodSel] = useState<string[]>([]);
-  const [languageIndex, setLanguageIndex] = useState(0);
-  const [genderIndex, setGenderIndex] = useState(0);
-  const [description, setDescription] = useState("");
-  const [lyricSeed, setLyricSeed] = useState("");
+  const [form, setForm] = useState<PromptForm>(emptyPromptForm());
 
   const [jobId, setJobId] = useState<string>();
-  const [songId, setSongId] = useState<string>();
   const [song, setSong] = useState<SongBrief>();
   const [error, setError] = useState<string>();
+  const [demoSubmitting, setDemoSubmitting] = useState(false);
   const [publicConfig, setPublicConfig] = useState<PublicAppConfig>({
     minRecordingSeconds: 6,
     maxRecordingSeconds: 60,
     demoTargetSeconds: 30,
-    enableExtendSong: false
+    enableFullSong: true
   });
 
   const recordingStartedAt = useRef(0);
@@ -78,32 +56,22 @@ export default function IndexPage() {
   const noteId = useRef(0);
   const configRef = useRef(publicConfig);
   configRef.current = publicConfig;
-  const audioRef = useRef<Taro.InnerAudioContext>();
 
-  const waveBars = useMemo(
-    () => Array.from({ length: 40 }, () => 12 + Math.round(Math.random() * 40)),
-    [recordingPath]
-  );
+  const player = useAudioPlayer();
+
+  useShareAppMessage(() => ({
+    title: song?.title ? `听听这首《${song.title}》` : "我用哼唱生成了一首歌，你也来试试",
+    path: song ? `/pages/play/index?songId=${song.id}` : "/pages/index/index"
+  }));
 
   useEffect(() => {
     request<PublicAppConfig>("/config/public")
       .then(setPublicConfig)
       .catch(() => undefined);
 
-    Taro.login({
-      success: async ({ code }) => {
-        try {
-          const response = await request<{ userId: string }>("/auth/wechat-login", {
-            method: "POST",
-            data: { code }
-          });
-          setUserId(response.userId);
-        } catch {
-          setError("微信登录失败");
-        }
-      },
-      fail: () => setError("微信登录失败")
-    });
+    ensureLogin()
+      .then(setUserId)
+      .catch(() => setError("微信登录失败"));
 
     recorder.onStop((result) => {
       clearTimers();
@@ -131,6 +99,7 @@ export default function IndexPage() {
     });
 
     return () => clearTimers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -139,9 +108,7 @@ export default function IndexPage() {
     }
     const timer = setInterval(async () => {
       try {
-        const job = await request<JobDetail>(`/jobs/${jobId}`, {
-          header: { "x-user-id": userId }
-        });
+        const job = await request<JobDetail>(`/jobs/${jobId}`, { header: authHeader(userId) });
         if (job.status === "running") {
           setState("generating");
         }
@@ -150,9 +117,7 @@ export default function IndexPage() {
           setError(job.errorMessage || "生成失败");
         }
         if (job.status === "succeeded" && job.songId) {
-          const nextSong = await request<SongBrief>(`/songs/${job.songId}`, {
-            header: { "x-user-id": userId }
-          });
+          const nextSong = await request<SongBrief>(`/songs/${job.songId}`, { header: authHeader(userId) });
           setSong(nextSong);
           setState("ready");
         }
@@ -180,9 +145,7 @@ export default function IndexPage() {
       size: 36 + Math.round(Math.random() * 36)
     };
     setNotes((prev) => [...prev, note]);
-    setTimeout(() => {
-      setNotes((prev) => prev.filter((item) => item.id !== id));
-    }, 3000);
+    setTimeout(() => setNotes((prev) => prev.filter((item) => item.id !== id)), 3000);
   }
 
   function startRecord() {
@@ -213,7 +176,7 @@ export default function IndexPage() {
   }
 
   function resetToRecord() {
-    stopPreview();
+    player.stop();
     setScreen("record");
     setState("idle");
     setRecordingPath(undefined);
@@ -222,118 +185,57 @@ export default function IndexPage() {
     setNotes([]);
     setSong(undefined);
     setJobId(undefined);
-    setSongId(undefined);
     setError(undefined);
-  }
-
-  function toggleStyle(value: string) {
-    setStyleSel((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
-  }
-
-  function toggleMood(value: string) {
-    setMoodSel((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
-  }
-
-  function stopPreview() {
-    previewAudioRef.current?.stop();
-    previewAudioRef.current?.destroy();
-    previewAudioRef.current = undefined;
-    setPreviewing(false);
-    setPreviewProgress(0);
-  }
-
-  function previewRecording() {
-    if (!recordingPath) return;
-    if (previewing) {
-      stopPreview();
-      return;
-    }
-    const audio = Taro.createInnerAudioContext();
-    previewAudioRef.current = audio;
-    audio.src = recordingPath;
-    audio.onPlay(() => setPreviewing(true));
-    audio.onTimeUpdate(() => {
-      const total = audio.duration || recordingDuration || 1;
-      setPreviewProgress(Math.min(1, audio.currentTime / total));
-    });
-    audio.onEnded(() => {
-      setPreviewing(false);
-      setPreviewProgress(0);
-    });
-    audio.onStop(() => setPreviewing(false));
-    audio.onError(() => {
-      setPreviewing(false);
-      setPreviewProgress(0);
-    });
-    audio.play();
+    setForm(emptyPromptForm());
   }
 
   async function submitDemo() {
-    if (!userId || !recordingPath) return;
-
-    stopPreview();
-    setScreen("result");
+    if (!recordingPath || demoSubmitting || generating) return;
+    player.stop();
+    setDemoSubmitting(true);
     setState("uploading");
     setError(undefined);
     try {
+      const uid = userId ?? (await ensureLogin());
+      setUserId(uid);
       const uploadResult = await Taro.uploadFile({
         url: `${API_BASE}/recordings`,
         filePath: recordingPath,
         name: "file",
         formData: { durationSeconds: String(recordingDuration) },
-        header: { "x-user-id": userId }
+        header: authHeader(uid)
       });
       if (uploadResult.statusCode >= 400) {
         throw new Error(uploadResult.data);
       }
-      const recording = JSON.parse(uploadResult.data) as { id: string };
+      const recordingRes = JSON.parse(uploadResult.data) as { id: string };
 
       const job = await request<{ jobId: string; songId: string }>("/songs/demo-jobs", {
         method: "POST",
-        header: { "x-user-id": userId },
-        data: {
-          recordingId: recording.id,
-          prompt: {
-            style: styleSel.length ? styleSel.join("，") : DEFAULT_STYLE,
-            mood: moodSel.length ? moodSel.join("，") : undefined,
-            language: languageOptions[languageIndex].value,
-            vocalGender: genderOptions[genderIndex].value,
-            description: description || undefined,
-            lyricSeed: lyricSeed || undefined
-          }
-        }
+        header: authHeader(uid),
+        data: { recordingId: recordingRes.id, prompt: promptFormToInput(form) }
       });
 
       setJobId(job.jobId);
-      setSongId(job.songId);
+      setScreen("result");
       setState("queued");
     } catch (submitError) {
       setState("failed");
       setError(submitError instanceof Error ? submitError.message : "提交失败");
+    } finally {
+      setDemoSubmitting(false);
     }
   }
 
-  async function requestExtend() {
-    if (!songId || !userId) return;
-    try {
-      const job = await request<{ jobId: string; songId: string }>("/songs/" + songId + "/extend-jobs", {
-        method: "POST",
-        header: { "x-user-id": userId }
-      });
-      setJobId(job.jobId);
-      setSongId(job.songId);
-      setState("queued");
-    } catch (extendError) {
-      setError(extendError instanceof Error ? extendError.message : "扩歌暂不可用");
-    }
+  function goFull() {
+    if (!song) return;
+    player.stop();
+    Taro.navigateTo({ url: `/pages/full/index?demoId=${song.id}` });
   }
 
-  function playSong() {
-    if (!song?.playbackUrl) return;
-    audioRef.current?.destroy();
-    audioRef.current = Taro.createInnerAudioContext();
-    audioRef.current.src = song.playbackUrl;
-    audioRef.current.play();
+  function openLibrary() {
+    player.stop();
+    Taro.navigateTo({ url: "/pages/library/index" });
   }
 
   const generating = state === "uploading" || state === "queued" || state === "generating";
@@ -345,6 +247,13 @@ export default function IndexPage() {
 
       {screen === "record" ? (
         <View className="screen record-screen">
+          <View className="user-entry" onClick={openLibrary}>
+            <View className="u-col">
+              <View className="u-head" />
+              <View className="u-body" />
+            </View>
+          </View>
+
           <View className="brand">
             <Text className="brand-title">哼一段，变成歌</Text>
             <Text className="brand-sub">按住下面的麦克风，哼出你的旋律</Text>
@@ -405,146 +314,35 @@ export default function IndexPage() {
 
       {screen === "details" ? (
         <View className="screen details-screen">
-          <View className="d-head">
-            <Text className="d-title">完善歌曲信息</Text>
-            <Text className="d-desc">
-              下面的内容<Text className="d-strong">全部可选</Text>。什么都不填也行，我们会根据你的哼唱自动创作 🎶
+          <View className="head">
+            <Text className="head-title">完善歌曲信息</Text>
+            <Text className="head-desc">
+              下面的内容<Text className="head-strong">全部可选</Text>。什么都不填也行，我们会根据你的哼唱自动创作 🎶
             </Text>
           </View>
 
-          <View className="playback">
-            <View className="play-btn" onClick={previewRecording}>
-              {previewing ? (
-                <View className="pause-icon">
-                  <View className="bar" />
-                  <View className="bar" />
-                </View>
-              ) : (
-                <View className="play-triangle" />
-              )}
-            </View>
-            <View className="pb-mid">
-              <View className={`pb-wave ${previewing ? "playing" : ""}`}>
-                {waveBars.map((height, index) => (
-                  <View
-                    key={index}
-                    className={`pb-wave-bar ${index / waveBars.length <= previewProgress ? "played" : ""}`}
-                    style={{ height: Taro.pxTransform(height) }}
-                  />
-                ))}
+          <View style={{ marginBottom: Taro.pxTransform(44) }}>
+            <PlayerCard player={player} url={recordingPath} title="我的哼唱" subtitle={`${recordingDuration} 秒`}>
+              <View className="rerecord" onClick={resetToRecord}>
+                重新录制
               </View>
-              <Text className="pb-meta">
-                {previewing ? "正在播放…" : "我的哼唱"} · {recordingDuration} 秒
-              </Text>
-            </View>
-            <View className="rerecord" onClick={resetToRecord}>
-              重新录制
-            </View>
+            </PlayerCard>
           </View>
 
-          <View className="field">
-            <View className="field-label">
-              <Text>曲风</Text>
-              <Text className="optional-tag">可选</Text>
-            </View>
-            <View className="chips">
-              {styleOptions.map((option) => (
-                <View
-                  key={option}
-                  className={`chip ${styleSel.includes(option) ? "active" : ""}`}
-                  onClick={() => toggleStyle(option)}
-                >
-                  {option}
-                </View>
-              ))}
-            </View>
-          </View>
+          <SongInfoForm value={form} onChange={setForm} />
 
-          <View className="field">
-            <View className="field-label">
-              <Text>情绪</Text>
-              <Text className="optional-tag">可选</Text>
-            </View>
-            <View className="chips">
-              {moodOptions.map((option) => (
-                <View
-                  key={option}
-                  className={`chip ${moodSel.includes(option) ? "active" : ""}`}
-                  onClick={() => toggleMood(option)}
-                >
-                  {option}
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View className="field">
-            <View className="field-label">
-              <Text>语言</Text>
-              <Text className="optional-tag">可选</Text>
-            </View>
-            <View className="segmented">
-              {languageOptions.map((option, index) => (
-                <View
-                  key={option.value}
-                  className={`seg-item ${languageIndex === index ? "active" : ""}`}
-                  onClick={() => setLanguageIndex(index)}
-                >
-                  {option.label}
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View className="field">
-            <View className="field-label">
-              <Text>人声</Text>
-              <Text className="optional-tag">可选</Text>
-            </View>
-            <View className="segmented">
-              {genderOptions.map((option, index) => (
-                <View
-                  key={option.value}
-                  className={`seg-item ${genderIndex === index ? "active" : ""}`}
-                  onClick={() => setGenderIndex(index)}
-                >
-                  {option.label}
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View className="field">
-            <View className="field-label">
-              <Text>主题 / 想表达的故事</Text>
-              <Text className="optional-tag">可选</Text>
-            </View>
-            <Textarea
-              className="ta"
-              placeholderClass="ta-placeholder"
-              value={description}
-              placeholder="例如：写给毕业那年的夏天，关于离别和期待…"
-              onInput={(event) => setDescription(event.detail.value)}
-            />
-          </View>
-
-          <View className="field">
-            <View className="field-label">
-              <Text>歌词片段</Text>
-              <Text className="optional-tag">可选</Text>
-            </View>
-            <Textarea
-              className="ta"
-              placeholderClass="ta-placeholder"
-              value={lyricSeed}
-              placeholder="有想好的词可以写在这里，我们会帮你扩展成完整歌词"
-              onInput={(event) => setLyricSeed(event.detail.value)}
-            />
-          </View>
+          {error ? <Text className="error-text">{error}</Text> : null}
 
           <View className="actions">
-            <View className="primary" onClick={submitDemo}>
-              生成 {publicConfig.demoTargetSeconds} 秒 demo
+            <View className={`primary ${demoSubmitting ? "loading disabled" : ""}`} onClick={submitDemo}>
+              {demoSubmitting ? (
+                <View className="btn-loading">
+                  <View className="btn-spinner" />
+                  <Text>{state === "uploading" ? "上传中…" : "提交中…"}</Text>
+                </View>
+              ) : (
+                "生成 demo"
+              )}
             </View>
             <View className="ghost" onClick={resetToRecord}>
               ← 返回重新录制
@@ -556,73 +354,96 @@ export default function IndexPage() {
       {screen === "result" ? (
         <View className="screen result-screen">
           {generating ? (
-            <>
+            <View className="center-block">
               <View className="spinner" />
-              <Text className="result-title">正在为你创作…</Text>
-              <Text className="result-desc">AI 正在把你的哼唱变成一首歌，大约需要 20–40 秒</Text>
-            </>
+              <Text className="head-title">正在为你创作…</Text>
+              <Text className="head-desc">AI 正在把你的哼唱变成一首歌，请稍候</Text>
+            </View>
           ) : null}
 
           {state === "ready" && song ? (
-            <>
-              <Text className="result-title">完成！</Text>
-              <Text className="result-desc">点击播放，听听你的 demo</Text>
-              <View className="result-card">
-                <View className="result-play" onClick={playSong}>
-                  <View className="play-triangle" />
-                </View>
-                <Text className="result-song-title">{song.title || "你的 demo 已生成"} 🎉</Text>
-                <Text className="result-song-meta">
-                  {song.durationSeconds ? `${song.durationSeconds} 秒` : `${publicConfig.demoTargetSeconds} 秒`}
-                  {styleSel.length ? ` · ${styleSel.join("，")}` : ""}
-                </Text>
-                {publicConfig.enableExtendSong ? (
-                  <View className="result-extra">
-                    <View className="secondary" onClick={requestExtend}>
-                      扩成完整歌
-                    </View>
-                  </View>
-                ) : null}
+            <View className="result-body">
+              <Text className="head-title">完成！🎉</Text>
+              <Text className="head-desc">这是你的 demo，满意的话可以生成完整版</Text>
+
+              <View style={{ marginTop: Taro.pxTransform(28), marginBottom: Taro.pxTransform(20) }}>
+                <PlayerCard
+                  player={player}
+                  url={song.playbackUrl}
+                  title={song.title || "我的 demo"}
+                  subtitle={song.durationSeconds ? `约 ${song.durationSeconds} 秒` : undefined}
+                />
               </View>
-            </>
+
+              <View className="player-card" onClick={() => player.toggle(recordingPath)} style={{ marginBottom: Taro.pxTransform(28) }}>
+                <View className="play-fab">
+                  {player.isPlaying(recordingPath) ? (
+                    <View className="pause-icon">
+                      <View className="bar" />
+                      <View className="bar" />
+                    </View>
+                  ) : (
+                    <View className="play-triangle" />
+                  )}
+                </View>
+                <View className="pc-mid">
+                  <Text className="pc-meta">{player.isPlaying(recordingPath) ? "正在播放…" : "试听原录音（哼唱）"}</Text>
+                </View>
+              </View>
+
+              <View className="actions-row">
+                <Button className="action-btn" openType="share">
+                  分享
+                </Button>
+                <View className="action-btn" onClick={() => saveSong(song.playbackUrl, song.title || "我的demo")}>
+                  下载
+                </View>
+              </View>
+
+              {publicConfig.enableFullSong ? (
+                <View className="actions" style={{ marginTop: Taro.pxTransform(20) }}>
+                  <View className="primary" onClick={goFull}>
+                    生成完整版歌曲
+                  </View>
+                  <View className="ghost" onClick={openLibrary}>
+                    我的音频
+                  </View>
+                </View>
+              ) : (
+                <View className="ghost" style={{ marginTop: Taro.pxTransform(20) }} onClick={openLibrary}>
+                  我的音频
+                </View>
+              )}
+
+              <View className="ghost" onClick={resetToRecord}>
+                ← 再哼一首
+              </View>
+            </View>
           ) : null}
 
           {state === "failed" ? (
-            <>
-              <Text className="result-title">出了点问题</Text>
+            <View className="center-block">
+              <Text className="head-title">出了点问题</Text>
               <Text className="error-text">{error || "生成失败，请重试"}</Text>
-              <View className="result-card">
-                <View className="result-extra">
-                  <View className="secondary" onClick={submitDemo}>
-                    重试
-                  </View>
+              <View className="actions" style={{ width: "100%" }}>
+                <View className={`primary ${demoSubmitting ? "loading disabled" : ""}`} onClick={submitDemo}>
+                  {demoSubmitting ? (
+                    <View className="btn-loading">
+                      <View className="btn-spinner" />
+                      <Text>提交中…</Text>
+                    </View>
+                  ) : (
+                    "重试"
+                  )}
+                </View>
+                <View className="ghost" onClick={resetToRecord}>
+                  ← 返回重新录制
                 </View>
               </View>
-            </>
+            </View>
           ) : null}
-
-          <View className="back-link" onClick={resetToRecord}>
-            ← 再哼一首
-          </View>
         </View>
       ) : null}
     </View>
   );
-}
-
-type ApiRequestOptions = Omit<Taro.request.Option, "url">;
-
-async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const response = await Taro.request<T>({
-    url: `${API_BASE}${path}`,
-    ...options,
-    header: {
-      "content-type": "application/json",
-      ...(options.header || {})
-    }
-  });
-  if (response.statusCode >= 400) {
-    throw new Error(typeof response.data === "string" ? response.data : JSON.stringify(response.data));
-  }
-  return response.data;
 }

@@ -4,7 +4,7 @@
   "models": {
     "minimax": {
       "demoModel": "music-cover",
-      "fullModel": "music-cover",
+      "fullModel": "music-2.6",
       "allowPaidModels": true
     },
     "mureka": {
@@ -30,7 +30,7 @@
     "signedUrlTtlSeconds": 900
   },
   "features": {
-    "enableExtendSong": false,
+    "enableExtendSong": true,
     "enableApproximateMinimaxExtend": false,
     "enableCommercialUseGate": false
   }

@@ -65,6 +65,27 @@ export class InMemoryRepository implements Demo2SongRepository {
     return (this.data.songs.get(id) as SongRecord | undefined) ?? null;
   }
 
+  async listSongsForUser(userId: string): Promise<SongRecord[]> {
+    return [...this.data.songs.values()]
+      .filter((song: SongRecord) => song.userId === userId)
+      .sort((a: SongRecord, b: SongRecord) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async listFullSongsForDemo(demoId: string, userId: string): Promise<SongRecord[]> {
+    return [...this.data.songs.values()]
+      .filter(
+        (song: SongRecord) =>
+          song.userId === userId && song.parentSongId === demoId && song.stage === "full"
+      )
+      .sort((a: SongRecord, b: SongRecord) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async countReadyFullForDemo(demoId: string): Promise<number> {
+    return [...this.data.songs.values()].filter(
+      (song: SongRecord) => song.parentSongId === demoId && song.stage === "full" && song.status === "ready"
+    ).length;
+  }
+
   async updateSong(id: string, patch: Partial<SongRecord>): Promise<void> {
     this.update("songs", id, patch);
   }

@@ -8,6 +8,6 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
     minRecordingSeconds: config.limits.minRecordingSeconds,
     maxRecordingSeconds: config.limits.maxRecordingSeconds,
     demoTargetSeconds: config.limits.demoTargetSeconds,
-    enableExtendSong: config.features.enableExtendSong
+    enableFullSong: config.features.enableExtendSong
   }));
 }

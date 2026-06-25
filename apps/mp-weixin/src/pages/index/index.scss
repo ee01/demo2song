@@ -1,60 +1,18 @@
-/* =========================================================
-   哼唱成歌 · 深色霓虹风界面
-   设计基于 750 设计稿，px 在编译期 1:1 转为 rpx
-   ========================================================= */
-
-.page {
-  position: relative;
-  min-height: 100vh;
-  box-sizing: border-box;
-  overflow: hidden;
-  color: #f4f1ff;
-  background: linear-gradient(180deg, #1a0b3d 0%, #0b0420 55%, #05020d 100%);
-}
-
-/* 背景氛围光晕 */
-.glow {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-}
-.glow-1 {
-  top: -160px;
-  left: -120px;
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, rgba(106, 92, 255, 0.35), transparent 70%);
-}
-.glow-2 {
-  bottom: -160px;
-  right: -140px;
-  width: 560px;
-  height: 560px;
-  background: radial-gradient(circle, rgba(255, 122, 217, 0.22), transparent 70%);
-}
-
-.screen {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  animation: screenIn 0.42s ease;
-}
-@keyframes screenIn {
-  from { opacity: 0; transform: translateX(36px); }
-  to { opacity: 1; transform: translateX(0); }
-}
+@import "../../styles/theme.scss";
 
 /* =========================================================
-   SCREEN 1 · 录音
+   SCREEN 1 · 录音（首页专属）
    ========================================================= */
 .record-screen {
   justify-content: space-between;
   align-items: center;
   padding: 88px 48px 64px;
+}
+
+.user-entry .u-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .brand {
@@ -74,7 +32,6 @@
   color: #b3a8d6;
 }
 
-/* 舞台区：麦克风 + 音符层 */
 .stage {
   position: relative;
   flex: 1;
@@ -127,8 +84,6 @@
   align-items: center;
   justify-content: center;
 }
-
-/* 呼吸光环 */
 .halo {
   position: absolute;
   left: 50%;
@@ -144,8 +99,6 @@
   0%, 100% { transform: scale(0.92); opacity: 0.6; }
   50% { transform: scale(1.05); opacity: 1; }
 }
-
-/* 录音涟漪 */
 .ripple {
   position: absolute;
   left: 50%;
@@ -165,7 +118,6 @@
   100% { transform: scale(1.7); opacity: 0; }
 }
 
-/* 麦克风按钮 */
 .mic-btn {
   position: relative;
   z-index: 3;
@@ -188,7 +140,6 @@
     inset 0 4px 14px rgba(255, 255, 255, 0.5);
 }
 
-/* CSS 绘制麦克风图标（描边风，对齐设计稿 SVG） */
 .mic-glyph {
   position: relative;
   width: 132px;
@@ -238,7 +189,6 @@
   background: #ffffff;
 }
 
-/* 音量律动条 */
 .eq {
   position: absolute;
   bottom: 14px;
@@ -276,7 +226,6 @@
   50% { transform: scaleY(1); }
 }
 
-/* 底部提示 */
 .record-foot {
   width: 100%;
   text-align: center;
@@ -318,95 +267,10 @@
 }
 
 /* =========================================================
-   SCREEN 2 · 完善信息
+   SCREEN 2 / 3 · 详情与结果（首页内）
    ========================================================= */
 .details-screen {
   padding: 96px 44px 64px;
-}
-.d-head {
-  margin-bottom: 36px;
-}
-.d-title {
-  display: block;
-  font-size: 42px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-.d-desc {
-  display: block;
-  font-size: 25px;
-  line-height: 1.6;
-  color: #b3a8d6;
-}
-.d-strong { color: #f4f1ff; font-weight: 700; }
-
-/* 回放卡片 */
-.playback {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 28px;
-  margin-bottom: 44px;
-  border-radius: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(135deg, rgba(185, 139, 255, 0.16), rgba(106, 92, 255, 0.1));
-}
-.play-btn {
-  flex: none;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(120% 120% at 30% 20%, #c9a9ff, #6a5cff 70%, #4a3acc);
-  box-shadow: 0 16px 36px rgba(106, 92, 255, 0.5);
-}
-.play-triangle {
-  width: 0;
-  height: 0;
-  margin-left: 8px;
-  border-style: solid;
-  border-width: 18px 0 18px 30px;
-  border-color: transparent transparent transparent #ffffff;
-}
-.pause-icon {
-  display: flex;
-  gap: 10px;
-}
-.pause-icon .bar {
-  width: 10px;
-  height: 38px;
-  border-radius: 3px;
-  background: #ffffff;
-}
-.pb-mid {
-  flex: 1;
-  min-width: 0;
-}
-.pb-wave {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 52px;
-  margin-bottom: 12px;
-}
-.pb-wave-bar {
-  flex: 1;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #b98bff, #6a5cff);
-  opacity: 0.85;
-  transition: opacity 0.12s linear;
-}
-.pb-wave.playing .pb-wave-bar {
-  opacity: 0.22;
-}
-.pb-wave.playing .pb-wave-bar.played {
-  opacity: 1;
-}
-.pb-meta {
-  font-size: 23px;
-  color: #b3a8d6;
 }
 .rerecord {
   flex: none;
@@ -418,212 +282,23 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* 字段 */
-.field {
-  margin-bottom: 40px;
-}
-.field-label {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 20px;
-}
-.optional-tag {
-  font-size: 20px;
-  font-weight: 500;
-  color: #b98bff;
-  padding: 4px 16px;
-  border-radius: 999px;
-  background: rgba(185, 139, 255, 0.14);
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-.chip {
-  padding: 16px 28px;
-  font-size: 26px;
-  color: #b3a8d6;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  transition: all 0.18s ease;
-}
-.chip.active {
-  color: #ffffff;
-  border-color: transparent;
-  background: linear-gradient(135deg, #6a5cff, #ff7ad9);
-  box-shadow: 0 12px 30px rgba(106, 92, 255, 0.4);
-}
-
-.segmented {
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-}
-.seg-item {
-  flex: 1;
-  text-align: center;
-  padding: 18px 0;
-  font-size: 26px;
-  color: #b3a8d6;
-  border-radius: 20px;
-  transition: all 0.18s ease;
-}
-.seg-item.active {
-  color: #ffffff;
-  background: linear-gradient(135deg, #6a5cff, #ff7ad9);
-}
-
-.ta {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 150px;
-  padding: 24px 28px;
-  font-size: 27px;
-  color: #f4f1ff;
-  border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-}
-.ta-placeholder {
-  color: rgba(179, 168, 214, 0.55);
-}
-
-/* 操作区 */
-.actions {
-  margin-top: 16px;
-}
-.primary {
-  width: 100%;
-  padding: 32px 0;
-  font-size: 32px;
-  font-weight: 700;
-  text-align: center;
-  color: #ffffff;
-  border-radius: 32px;
-  background: linear-gradient(135deg, #6a5cff, #ff7ad9);
-  box-shadow: 0 28px 60px rgba(106, 92, 255, 0.45);
-}
-.primary.disabled {
-  opacity: 0.5;
-}
-.ghost {
-  width: 100%;
-  margin-top: 24px;
-  padding: 16px 0;
-  font-size: 27px;
-  color: #b3a8d6;
-  background: transparent;
-  text-align: center;
-}
-
-/* 复用 Taro Button 时去除默认样式 */
-.plain-btn {
-  padding: 0;
-  margin: 0;
-  line-height: normal;
-  background: transparent;
-}
-.plain-btn::after {
-  border: none;
-}
-
-/* =========================================================
-   SCREEN 3 · 生成中 / 结果
-   ========================================================= */
 .result-screen {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 88px 48px;
+  padding: 96px 44px 64px;
 }
-.spinner {
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  border: 8px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #ff7ad9;
-  margin-bottom: 48px;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-.result-title {
-  display: block;
-  font-size: 40px;
-  font-weight: 700;
-  margin-bottom: 16px;
-}
-.result-desc {
-  display: block;
-  font-size: 27px;
-  color: #b3a8d6;
-  margin-bottom: 56px;
-  line-height: 1.6;
-}
-.result-card {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 48px 40px;
-  border-radius: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-}
-.result-play {
-  width: 128px;
-  height: 128px;
-  border-radius: 50%;
-  margin: 0 auto 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(120% 120% at 30% 20%, #c9a9ff, #6a5cff 70%, #4a3acc);
-  box-shadow: 0 20px 48px rgba(106, 92, 255, 0.5);
-}
-.result-song-title {
-  display: block;
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-.result-song-meta {
-  display: block;
-  font-size: 25px;
-  color: #b3a8d6;
-}
-.result-extra {
-  display: flex;
-  gap: 20px;
-  margin-top: 32px;
-}
-.result-extra .secondary {
+.center-block {
   flex: 1;
-  padding: 26px 0;
-  font-size: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  color: #f4f1ff;
-  border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.08);
+}
+.result-body {
+  width: 100%;
 }
 .error-text {
   display: block;
   font-size: 26px;
   color: #ff9b8a;
-  margin-bottom: 32px;
-}
-.back-link {
-  margin-top: 48px;
-  font-size: 27px;
-  color: #b3a8d6;
-  background: transparent;
+  margin: 16px 0 32px;
 }

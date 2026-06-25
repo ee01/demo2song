@@ -1,6 +1,6 @@
 import type {
   CreateDemoSongInput,
-  ExtendSongInput,
+  CreateFullSongInput,
   MusicProvider,
   NormalizedProviderError,
   ProviderCapabilities,
@@ -41,11 +41,23 @@ export class MiniMaxProvider implements MusicProvider {
   }
 
   async createDemoSong(input: CreateDemoSongInput): Promise<ProviderSongResult> {
-    return this.generateWithReference(input.recording, input.prompt.style, input.expandedLyrics);
+    // music-cover: 跟随哼唱旋律的翻唱，输出时长≈参考音频时长
+    return this.generateWithReference(
+      config.models.minimax.demoModel,
+      input.recording,
+      input.prompt.style,
+      input.expandedLyrics
+    );
   }
 
-  async extendSong(input: ExtendSongInput): Promise<ProviderSongResult> {
-    return this.generateWithReference(input.demoSong, input.prompt.style, input.expandedLyrics);
+  async createFullSong(input: CreateFullSongInput): Promise<ProviderSongResult> {
+    // music-2.6: 以原录音为风格参考，根据歌词重生成一首完整歌曲
+    return this.generateWithReference(
+      config.models.minimax.fullModel,
+      input.recording,
+      input.prompt.style,
+      input.expandedLyrics
+    );
   }
 
   normalizeError(error: unknown): NormalizedProviderError {
@@ -58,6 +70,7 @@ export class MiniMaxProvider implements MusicProvider {
   }
 
   private async generateWithReference(
+    model: string,
     audio: CreateDemoSongInput["recording"],
     style: string,
     lyrics: string
@@ -70,7 +83,7 @@ export class MiniMaxProvider implements MusicProvider {
         mimeType: "audio/mpeg",
         durationSeconds: audio.durationSeconds,
         lyrics,
-        raw: { mock: true }
+        raw: { mock: true, model }
       };
     }
 
@@ -78,12 +91,11 @@ export class MiniMaxProvider implements MusicProvider {
       throw new Error("MINIMAX_API_KEY is required");
     }
 
-    const model = config.models.minimax.demoModel;
     const referenceAudio =
       audio.audioBase64 && audio.audioBase64.length > 0
         ? { audio_base64: audio.audioBase64 }
         : { audio_url: audio.signedUrl };
-    const response = await fetch("https://api.minimax.io/v1/music_generation", {
+    const response = await fetch(`${env.MINIMAX_API_BASE}/v1/music_generation`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${env.MINIMAX_API_KEY}`,

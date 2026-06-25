@@ -8,6 +8,7 @@ dist/
 .env.*
 !.env.example
 coverage/
+Dockerfile
 apps/api/prisma/generated/
 apps/api/uploads/
 apps/worker/tmp/

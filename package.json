@@ -8,7 +8,14 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev:weapp -w @demo2song/mp-weixin",
+    "build": "npm run build -w @demo2song/mp-weixin",
+    "deploy": "yarn deploy:cloudrun",
+    "deploy:api": "node scripts/deploy-cloudrun.mjs --service api",
+    "deploy:worker": "node scripts/deploy-cloudrun.mjs --service worker",
+    "build:all": "npm run build --workspaces --if-present",
+    "build:cloudrun": "yarn install --frozen-lockfile && yarn build:all",
+    "deploy:cloudrun": "node scripts/deploy-cloudrun.mjs",
     "cloudbase:init": "npm run cloudbase:init -w @demo2song/data",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

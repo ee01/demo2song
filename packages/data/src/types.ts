@@ -99,6 +99,9 @@ export interface Demo2SongRepository {
   findSongForUser(id: string, userId: string): Promise<SongRecord | null>;
   findReadyDemoSongForUser(id: string, userId: string): Promise<SongRecord | null>;
   getSongById(id: string): Promise<SongRecord | null>;
+  listSongsForUser(userId: string): Promise<SongRecord[]>;
+  listFullSongsForDemo(demoId: string, userId: string): Promise<SongRecord[]>;
+  countReadyFullForDemo(demoId: string): Promise<number>;
   updateSong(id: string, patch: Partial<SongRecord>): Promise<void>;
   createSongJob(input: CreateSongJobInput): Promise<SongJobRecord>;
   findJobForUser(id: string, userId: string): Promise<SongJobRecord | null>;

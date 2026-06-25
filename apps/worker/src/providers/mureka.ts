@@ -1,6 +1,6 @@
 import type {
   CreateDemoSongInput,
-  ExtendSongInput,
+  CreateFullSongInput,
   MusicProvider,
   NormalizedProviderError,
   ProviderCapabilities,
@@ -30,8 +30,10 @@ export class MurekaProvider implements MusicProvider {
     });
   }
 
-  async extendSong(input: ExtendSongInput): Promise<ProviderSongResult> {
-    const audioFileId = await this.uploadByUrl(input.demoSong.signedUrl, "audio");
+  async createFullSong(input: CreateFullSongInput): Promise<ProviderSongResult> {
+    // Mureka 支持真实续写：以 demo 音频为基底扩展为完整歌曲
+    const baseAudio = input.demoSong ?? input.recording;
+    const audioFileId = await this.uploadByUrl(baseAudio.signedUrl, "audio");
     return this.createTask("/v1/song/extend", {
       lyrics: input.expandedLyrics,
       audio_file_id: audioFileId,

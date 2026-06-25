@@ -1,0 +1,44 @@
+FROM node:20-bookworm-slim AS builder
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
+
+COPY package.json yarn.lock ./
+COPY apps/api/package.json apps/api/
+COPY apps/worker/package.json apps/worker/
+COPY apps/mp-weixin/package.json apps/mp-weixin/
+COPY packages/config/package.json packages/config/
+COPY packages/data/package.json packages/data/
+COPY packages/shared/package.json packages/shared/
+
+RUN yarn install --frozen-lockfile
+
+COPY tsconfig.base.json ./
+COPY apps/worker apps/worker
+COPY packages packages
+
+RUN npm run build -w @demo2song/shared \
+  && npm run build -w @demo2song/config \
+  && npm run build -w @demo2song/data \
+  && npm run build -w @demo2song/worker
+
+FROM node:20-bookworm-slim AS runner
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production
+ENV WORKER_PORT=3000
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/apps/worker ./apps/worker
+COPY --from=builder /app/packages ./packages
+
+EXPOSE 3000
+
+CMD ["node", "apps/worker/dist/apps/worker/src/worker.js"]
