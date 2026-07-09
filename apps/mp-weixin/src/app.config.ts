@@ -1,4 +1,5 @@
 export default defineAppConfig({
+  requiredBackgroundModes: ["audio"],
   pages: [
     "pages/index/index",
     "pages/full/index",

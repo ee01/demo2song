@@ -35,7 +35,9 @@ Open [CloudRun console](https://tcb.cloud.tencent.com/dev?envId=cloud1-d1g1m1uze
 4. **部署发布** → **新建版本** → upload method **本地代码** → Dockerfile name:
    - API: `Dockerfile.api`
    - Worker: `Dockerfile.worker`
-5. After deploy, copy **默认域名** for `TARO_APP_API_BASE`
+5. After deploy, prefer a **custom domain** for `TARO_APP_API_BASE` if you plan to publish the mini program
+
+CloudRun default domains are often shown as test addresses in the mini program public platform and may not be accepted into the request/uploadFile whitelist. For production, bind a custom HTTPS domain such as `api.demo2song.eexx.me`, then add the DNS CNAME record CloudRun gives you and use that custom domain in the mini program and public platform settings.
 
 If you use **无 Dockerfile** mode instead, the console shows:
 
@@ -54,7 +56,7 @@ Required environment variables (console **服务设置 → 环境变量**):
 - `CLOUDBASE_ENV_ID`
 - `WECHAT_APP_ID`, `WECHAT_APP_SECRET`, `WECHAT_LOGIN_STRICT=true`
 - `COS_SECRET_ID`, `COS_SECRET_KEY`, `COS_BUCKET`, `COS_REGION`
-- `COS_CDN_BASE_URL` optional
+- `COS_CDN_BASE_URL` optional; if you use it, the same CDN domain also needs to be added to the mini program `downloadFile` whitelist
 - `API_PORT=3000` optional if image default is used
 
 ## Worker service (`demo2song-worker`)
@@ -72,15 +74,15 @@ Required environment variables:
 
 ## Mini program
 
-After API is live:
+After API is live and the custom domain points to it:
 
 ```bash
-TARO_APP_API_BASE="https://<demo2song-api-default-domain>" yarn build
+TARO_APP_API_BASE="https://api.demo2song.eexx.me" yarn build
 ```
 
 Verify:
 
 ```bash
-curl -sS "https://<domain>/health"
+curl -sS "https://api.demo2song.eexx.me/health"
 # {"ok":true}
 ```

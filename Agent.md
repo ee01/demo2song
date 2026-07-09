@@ -332,7 +332,7 @@ yarn deploy
 ### 部署后验证
 
 ```bash
-CLOUD_API=https://demo2song-api-4045882-1446906548.ap-shanghai.run.tcloudbase.com
+CLOUD_API=https://api.demo2song.eexx.me
 curl -sS $CLOUD_API/health
 curl -sS $CLOUD_API/config/public
 ```
@@ -343,18 +343,20 @@ curl -sS $CLOUD_API/config/public
 
 `yarn dev`（即 `yarn dev:mp`）和 `yarn build`（不设 `TARO_APP_API_BASE`）编译出的版本 `__API_BASE__` 指向 `http://localhost:3100`，**仅适用于本地开发和 DevTools 调试，不能上传发布**。
 
+发布时优先使用自定义 HTTPS 域名，例如 `api.demo2song.eexx.me`。CloudRun 默认域名经常会被微信公众平台识别为测试地址，不能直接加入合法域名白名单。
+
 ### 生产版本编译步骤
 
 在 `.env` 中设置云托管 API 域名，然后编译：
 
 ```bash
 # 在 .env 中设置（或直接内联）
-# TARO_APP_API_BASE=https://demo2song-api-<hash>.ap-guangzhou.app.tcloudbase.com
+# TARO_APP_API_BASE=https://api.demo2song.eexx.me
 
 yarn build
 
 # 内联方式（不改动 .env）：
-TARO_APP_API_BASE=https://your-cloudrun-api-domain.com yarn build
+TARO_APP_API_BASE=https://api.demo2song.eexx.me yarn build
 ```
 
 编译产物在 `apps/mp-weixin/dist`，通过微信开发者工具「上传」功能提交到微信后台。

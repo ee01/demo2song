@@ -241,6 +241,14 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       if (parent && parent.userId === userId) {
         detail.parentDemoPlaybackUrl = await toPlaybackUrl(parent);
       }
+      const recording = await repository.getRecordingById(song.recordingId);
+      if (recording && recording.userId === userId) {
+        detail.recordingPlaybackUrl = await getObjectStorage().getPublicOrSignedUrl(
+          recording.objectKey,
+          config.storage.signedUrlTtlSeconds
+        );
+        detail.recordingDurationSeconds = recording.durationSeconds;
+      }
     }
 
     return reply.send(detail);

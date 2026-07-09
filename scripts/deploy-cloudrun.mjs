@@ -22,6 +22,7 @@ const serviceArg = (() => {
   const idx = process.argv.indexOf('--service');
   return idx !== -1 ? process.argv[idx + 1] : null;
 })();
+const configureWorkerReplicasOnly = process.argv.includes('--configure-worker-replicas');
 
 const ROOT = resolve(new URL('.', import.meta.url).pathname, '..');
 const TCB = 'tcb';
@@ -98,24 +99,169 @@ function run(cmd, opts = {}) {
   execSync(cmd, { stdio: 'inherit', cwd: ROOT, ...opts });
 }
 
+function runMasked(label, cmd, opts = {}) {
+  console.log(`\n$ ${label}\n`);
+  execSync(cmd, { stdio: 'inherit', cwd: ROOT, ...opts });
+}
+
+function runJson(cmd, opts = {}) {
+  console.log(`\n$ ${cmd}\n`);
+  let output;
+  try {
+    output = execSync(cmd, { encoding: 'utf8', cwd: ROOT, ...opts });
+  } catch (error) {
+    output = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+    const parsed = parseJsonOutput(output, cmd);
+    error.cloudBaseCode = parsed?.error?.code;
+    error.cloudBaseMessage = parsed?.error?.message;
+    throw error;
+  }
+  return parseJsonOutput(output, cmd);
+}
+
+function parseJsonOutput(output, cmd) {
+  const jsonStart = output.indexOf('{');
+  const jsonEnd = output.lastIndexOf('}');
+  if (jsonStart < 0 || jsonEnd < jsonStart) {
+    throw new Error(`Command did not return JSON: ${cmd}`);
+  }
+  return JSON.parse(output.slice(jsonStart, jsonEnd + 1));
+}
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function tclWord(value) {
+  return `{${String(value).replace(/\\/g, '\\\\').replace(/}/g, '\\}')}}`;
+}
+
+function runInteractiveDeploy(args) {
+  const expectScript = `
+set timeout -1
+spawn ${args.map(tclWord).join(' ')}
+expect {
+  -re "Enable gray deployment" {
+    send "0\\r"
+    exp_continue
+  }
+  -re "Confirm to continue deployment" {
+    send "Y\\r"
+    exp_continue
+  }
+  eof
+}
+catch wait result
+exit [lindex $result 3]
+`;
+  run(`expect -c ${shellQuote(expectScript)}`);
+}
+
 function deployService(serviceName, templateFile, port, envVars) {
   const dockerPath = resolve(ROOT, 'Dockerfile');
   const content = buildDockerfile(templateFile, envVars);
   writeFileSync(dockerPath, content, 'utf8');
   try {
-    const portFlag = port ? ` --port ${port}` : '';
-    // 通过 echo 0 选择"不启用灰度"，--force 仍保留以跳过其他确认
-    run(
-      `echo 0 | ${TCB} cloudrun deploy` +
-      ` -e ${ENV_ID}` +
-      ` -s ${serviceName}` +
-      `${portFlag}` +
-      ` --source ${ROOT}` +
-      ` --force`
-    );
+    runInteractiveDeploy([
+      TCB,
+      'cloudrun',
+      'deploy',
+      '-e',
+      ENV_ID,
+      '-s',
+      serviceName,
+      ...(port ? ['--port', String(port)] : []),
+      '--source',
+      ROOT,
+      '--force'
+    ]);
   } finally {
     try { unlinkSync(dockerPath); } catch { /* ignore */ }
   }
+}
+
+function getOnlineImage(serviceName) {
+  const body = JSON.stringify({ EnvId: ENV_ID, ServerName: serviceName });
+  const result = runJson(
+    `${TCB} api tcbr DescribeCloudRunServerDetail` +
+    ` --api-version 2022-02-17 --json --body ${shellQuote(body)}`
+  );
+  const imageUrl = result?.data?.OnlineVersionInfos?.[0]?.ImageUrl;
+  if (!imageUrl) {
+    throw new Error(`无法读取 ${serviceName} 的线上镜像地址`);
+  }
+  return imageUrl;
+}
+
+function waitForDeployTasks(serviceName) {
+  const body = JSON.stringify({ EnvId: ENV_ID, ServerName: serviceName });
+  const cmd =
+    `${TCB} api tcbr DescribeCloudRunDeployRecord` +
+    ` --api-version 2022-02-17 --json --body ${shellQuote(body)}`;
+
+  for (let attempt = 1; attempt <= 60; attempt++) {
+    const result = runJson(cmd);
+    const activeTasks = result?.data?.DeployRecords?.filter((record) =>
+      ['creating', 'init', 'deploying', 'building', 'releasing'].includes(String(record.Status ?? '').toLowerCase())
+    ) ?? [];
+    if (activeTasks.length === 0) {
+      return;
+    }
+    console.log(`CloudBase deployment is still running; waiting before replica config (${attempt}/60)...`);
+    sleep(10000);
+  }
+  throw new Error(`Timed out waiting for ${serviceName} deployment tasks`);
+}
+
+function configureWorkerReplicas() {
+  const minNum = Number(process.env.WORKER_MIN_NUM ?? 1);
+  const maxNum = Number(process.env.WORKER_MAX_NUM ?? 1);
+  if (!Number.isInteger(minNum) || minNum < 1) {
+    throw new Error('WORKER_MIN_NUM must be an integer >= 1');
+  }
+  if (!Number.isInteger(maxNum) || maxNum < minNum) {
+      throw new Error('WORKER_MAX_NUM must be an integer >= WORKER_MIN_NUM');
+  }
+
+  waitForDeployTasks('demo2song-worker');
+  const imageUrl = getOnlineImage('demo2song-worker');
+  const body = JSON.stringify({
+    EnvId: ENV_ID,
+    ServerName: 'demo2song-worker',
+    DeployInfo: {
+      DeployType: 'image',
+      ImageUrl: imageUrl,
+      ReleaseType: 'FULL',
+      DeployRemark: `set worker replicas min=${minNum}, max=${maxNum}`
+    },
+    Items: [
+      { Key: 'MinNum', IntValue: minNum },
+      { Key: 'MaxNum', IntValue: maxNum },
+      { Key: 'Port', IntValue: 3000 },
+      { Key: 'Dockerfile', Value: 'Dockerfile' }
+    ]
+  });
+  const cmd =
+    `${TCB} api tcbr UpdateCloudRunServer` +
+    ` --api-version 2022-02-17 --json --body ${shellQuote(body)}`;
+
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    try {
+      runJson(cmd);
+      return;
+    } catch (error) {
+      if (error.cloudBaseCode !== 'ResourceInUse') {
+        throw error;
+      }
+      console.log(`CloudBase still has a deployment task running; retrying replica config (${attempt}/30)...`);
+      sleep(10000);
+    }
+  }
+  throw new Error('Timed out waiting to configure worker replicas');
 }
 
 // ──────────────────────────────────────────────
@@ -164,16 +310,23 @@ const workerEnv = {
 console.log('=== demo2song 云托管部署 ===');
 console.log(`环境: ${ENV_ID}`);
 
-run(`${TCB} login --apiKeyId ${SECRET_ID} --apiKey ${SECRET_KEY}`);
+runMasked(`${TCB} login --apiKeyId *** --apiKey ***`, `${TCB} login --apiKeyId ${SECRET_ID} --apiKey ${SECRET_KEY}`);
 
-if (!serviceArg || serviceArg === 'api') {
+if (!configureWorkerReplicasOnly && (!serviceArg || serviceArg === 'api')) {
   console.log('\n--- 部署 demo2song-api ---');
   deployService('demo2song-api', 'Dockerfile.api', 3000, apiEnv);
 }
 
-if (!serviceArg || serviceArg === 'worker') {
+if (!configureWorkerReplicasOnly && (!serviceArg || serviceArg === 'worker')) {
   console.log('\n--- 部署 demo2song-worker ---');
   deployService('demo2song-worker', 'Dockerfile.worker', 3000, workerEnv);
+  console.log('\n--- 固定 demo2song-worker 副本数 ---');
+  configureWorkerReplicas();
+}
+
+if (configureWorkerReplicasOnly) {
+  console.log('\n--- 固定 demo2song-worker 副本数 ---');
+  configureWorkerReplicas();
 }
 
 console.log('\n✅  部署任务已提交，云端正在构建镜像。');

@@ -6,7 +6,7 @@ import SongInfoForm from "../../components/SongInfoForm";
 import PlayerCard from "../../components/PlayerCard";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { emptyPromptForm, inputToPromptForm, promptFormToInput, type PromptForm } from "../../constants";
-import { authHeader, ensureLogin, request } from "../../utils/request";
+import { authHeader, ensureLogin, request, errorMessage } from "../../utils/request";
 import "./index.scss";
 
 type Phase = "config" | "generating" | "failed";
@@ -34,7 +34,7 @@ export default function FullPage() {
         setDemo(detail);
         setForm(inputToPromptForm(detail.prompt));
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "加载失败");
+        setError(errorMessage(loadError, "加载失败"));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -57,7 +57,7 @@ export default function FullPage() {
         }
       } catch (pollError) {
         setPhase("failed");
-        setError(pollError instanceof Error ? pollError.message : "查询任务失败");
+        setError(errorMessage(pollError, "查询任务失败"));
       }
     }, 2500);
     return () => clearInterval(timer);
@@ -79,7 +79,7 @@ export default function FullPage() {
       setPhase("generating");
     } catch (submitError) {
       setPhase("failed");
-      setError(submitError instanceof Error ? submitError.message : "提交失败");
+      setError(errorMessage(submitError, "提交失败"));
     } finally {
       setSubmitting(false);
     }

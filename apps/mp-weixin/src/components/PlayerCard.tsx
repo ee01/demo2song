@@ -11,10 +11,20 @@ interface PlayerCardProps {
   subtitle?: string;
   big?: boolean;
   barsKey?: string;
+  onBeforeToggle?: () => void;
   children?: ReactNode;
 }
 
-export default function PlayerCard({ player, url, title, subtitle, big, barsKey, children }: PlayerCardProps) {
+export default function PlayerCard({
+  player,
+  url,
+  title,
+  subtitle,
+  big,
+  barsKey,
+  onBeforeToggle,
+  children
+}: PlayerCardProps) {
   const bars = useMemo(
     () => Array.from({ length: 40 }, () => 12 + Math.round(Math.random() * 40)),
     [barsKey ?? url]
@@ -23,7 +33,13 @@ export default function PlayerCard({ player, url, title, subtitle, big, barsKey,
 
   return (
     <View className="player-card">
-      <View className={`play-fab ${big ? "lg" : ""}`} onClick={() => player.toggle(url)}>
+      <View
+        className={`play-fab ${big ? "lg" : ""}`}
+        onClick={() => {
+          onBeforeToggle?.();
+          player.toggle(url, { title });
+        }}
+      >
         {playing ? (
           <View className="pause-icon">
             <View className="bar" />

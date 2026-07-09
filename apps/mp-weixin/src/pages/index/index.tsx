@@ -6,7 +6,7 @@ import SongInfoForm from "../../components/SongInfoForm";
 import PlayerCard from "../../components/PlayerCard";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { emptyPromptForm, promptFormToInput, type PromptForm } from "../../constants";
-import { API_BASE, authHeader, ensureLogin, request } from "../../utils/request";
+import { API_BASE, authHeader, ensureLogin, request, errorMessage } from "../../utils/request";
 import { saveSong } from "../../utils/download";
 import "./index.scss";
 
@@ -24,6 +24,19 @@ interface FloatingNote {
   variant: string;
   left: number;
   size: number;
+}
+
+function getNavBottom() {
+  try {
+    const menu = Taro.getMenuButtonBoundingClientRect?.();
+    if (menu && menu.bottom) {
+      return Math.round(menu.bottom);
+    }
+    const sys = Taro.getSystemInfoSync();
+    return (sys.statusBarHeight ?? 20) + 44;
+  } catch {
+    return 64;
+  }
 }
 
 export default function IndexPage() {
@@ -59,6 +72,8 @@ export default function IndexPage() {
 
   const player = useAudioPlayer();
 
+  const [navBottom] = useState(getNavBottom);
+
   useShareAppMessage(() => ({
     title: song?.title ? `听听这首《${song.title}》` : "我用哼唱生成了一首歌，你也来试试",
     path: song ? `/pages/play/index?songId=${song.id}` : "/pages/index/index"
@@ -71,7 +86,7 @@ export default function IndexPage() {
 
     ensureLogin()
       .then(setUserId)
-      .catch(() => setError("微信登录失败"));
+      .catch((loginError) => setError(errorMessage(loginError, "微信登录失败")));
 
     recorder.onStop((result) => {
       clearTimers();
@@ -123,7 +138,7 @@ export default function IndexPage() {
         }
       } catch (pollError) {
         setState("failed");
-        setError(pollError instanceof Error ? pollError.message : "查询任务失败");
+        setError(errorMessage(pollError, "查询任务失败"));
       }
     }, 2500);
 
@@ -221,7 +236,7 @@ export default function IndexPage() {
       setState("queued");
     } catch (submitError) {
       setState("failed");
-      setError(submitError instanceof Error ? submitError.message : "提交失败");
+      setError(errorMessage(submitError, "提交失败"));
     } finally {
       setDemoSubmitting(false);
     }
@@ -246,8 +261,8 @@ export default function IndexPage() {
       <View className="glow glow-2" />
 
       {screen === "record" ? (
-        <View className="screen record-screen">
-          <View className="user-entry" onClick={openLibrary}>
+        <View className="screen record-screen" style={{ paddingTop: `${navBottom + 16}px` }}>
+          <View className="user-entry" onClick={openLibrary} style={{ top: `${navBottom + 8}px` }}>
             <View className="u-col">
               <View className="u-head" />
               <View className="u-body" />
@@ -313,7 +328,7 @@ export default function IndexPage() {
       ) : null}
 
       {screen === "details" ? (
-        <View className="screen details-screen">
+        <View className="screen details-screen" style={{ paddingTop: `${navBottom + 24}px` }}>
           <View className="head">
             <Text className="head-title">完善歌曲信息</Text>
             <Text className="head-desc">
@@ -352,7 +367,7 @@ export default function IndexPage() {
       ) : null}
 
       {screen === "result" ? (
-        <View className="screen result-screen">
+        <View className="screen result-screen" style={{ paddingTop: `${navBottom + 24}px` }}>
           {generating ? (
             <View className="center-block">
               <View className="spinner" />

@@ -119,7 +119,9 @@ describe("api app", () => {
       id: fullJob.songId,
       stage: "full",
       parentDemoId: demoJob.songId,
-      parentDemoPlaybackUrl: `https://storage.test/songs/${userId}/${recording.id}/demo/${demoJob.songId}.mp3`
+      parentDemoPlaybackUrl: `https://storage.test/songs/${userId}/${recording.id}/demo/${demoJob.songId}.mp3`,
+      recordingPlaybackUrl: `https://storage.test/${recording.objectKey}`,
+      recordingDurationSeconds: 12
     });
 
     const publicResponse = await app.inject({ method: "GET", url: `/public/songs/${fullJob.songId}` });

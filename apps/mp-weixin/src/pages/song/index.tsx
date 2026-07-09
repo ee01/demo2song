@@ -14,7 +14,8 @@ export default function SongPage() {
 
   const [song, setSong] = useState<SongDetail>();
   const [error, setError] = useState<string>();
-  const player = useAudioPlayer();
+  const inlinePlayer = useAudioPlayer();
+  const backgroundPlayer = useAudioPlayer({ mode: "background" });
 
   useShareAppMessage(() => ({
     title: song?.title ? `听听这首《${song.title}》` : "我用哼唱生成了一首歌，你也来试试",
@@ -26,6 +27,16 @@ export default function SongPage() {
       try {
         const uid = await ensureLogin();
         const detail = await request<SongDetail>(`/songs/${id}`, { header: authHeader(uid) });
+        if (detail.stage === "full" && detail.parentDemoId && !detail.recordingPlaybackUrl) {
+          const parentDemo = await request<SongDetail>(`/songs/${detail.parentDemoId}`, { header: authHeader(uid) });
+          setSong({
+            ...detail,
+            parentDemoPlaybackUrl: detail.parentDemoPlaybackUrl ?? parentDemo.playbackUrl,
+            recordingPlaybackUrl: parentDemo.recordingPlaybackUrl,
+            recordingDurationSeconds: parentDemo.recordingDurationSeconds
+          });
+          return;
+        }
         setSong(detail);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "加载失败");
@@ -34,6 +45,43 @@ export default function SongPage() {
   });
 
   const isDemo = song?.stage === "demo";
+  const primaryPlayer = isDemo ? inlinePlayer : backgroundPlayer;
+
+  function stopAllPlayers() {
+    inlinePlayer.stop();
+    backgroundPlayer.stop();
+  }
+
+  function renderReferenceAudio(title: string, url?: string, subtitle?: string) {
+    if (!url) {
+      return null;
+    }
+    const playing = inlinePlayer.isPlaying(url);
+    return (
+      <View
+        className="reference-audio"
+        onClick={() => {
+          backgroundPlayer.stop();
+          inlinePlayer.toggle(url, { title });
+        }}
+      >
+        <View className="play-fab mini-fab">
+          {playing ? (
+            <View className="pause-icon">
+              <View className="bar" />
+              <View className="bar" />
+            </View>
+          ) : (
+            <View className="play-triangle" />
+          )}
+        </View>
+        <View className="reference-mid">
+          <Text className="reference-title">{playing ? "正在播放…" : title}</Text>
+          {subtitle ? <Text className="reference-subtitle">{subtitle}</Text> : null}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="page">
@@ -53,10 +101,15 @@ export default function SongPage() {
             </View>
 
             <PlayerCard
-              player={player}
+              player={primaryPlayer}
               url={song.playbackUrl}
               title={song.title || (isDemo ? "我的 demo" : "完整版")}
               subtitle={song.durationSeconds ? `约 ${song.durationSeconds} 秒` : undefined}
+              onBeforeToggle={() => {
+                if (!isDemo) {
+                  inlinePlayer.stop();
+                }
+              }}
             />
 
             <View className="actions-row" style={{ marginTop: Taro.pxTransform(28) }}>
@@ -72,10 +125,10 @@ export default function SongPage() {
               <View
                 className="player-card mini"
                 style={{ marginTop: Taro.pxTransform(24) }}
-                onClick={() => player.toggle(song.recordingPlaybackUrl)}
+                onClick={() => inlinePlayer.toggle(song.recordingPlaybackUrl, { title: "录制原声" })}
               >
                 <View className="play-fab">
-                  {player.isPlaying(song.recordingPlaybackUrl) ? (
+                  {inlinePlayer.isPlaying(song.recordingPlaybackUrl) ? (
                     <View className="pause-icon">
                       <View className="bar" />
                       <View className="bar" />
@@ -86,9 +139,24 @@ export default function SongPage() {
                 </View>
                 <View className="pc-mid">
                   <Text className="pc-meta">
-                    {player.isPlaying(song.recordingPlaybackUrl) ? "正在播放…" : "试听原录音（哼唱）"}
+                    {inlinePlayer.isPlaying(song.recordingPlaybackUrl) ? "正在播放…" : "试听原录音（哼唱）"}
                   </Text>
                 </View>
+              </View>
+            ) : null}
+
+            {!isDemo && (song.parentDemoPlaybackUrl || song.recordingPlaybackUrl) ? (
+              <View className="reference-audio-list">
+                {renderReferenceAudio(
+                  "demo 音频",
+                  song.parentDemoPlaybackUrl,
+                  song.parentDemoId ? "生成完整版时使用的 demo" : undefined
+                )}
+                {renderReferenceAudio(
+                  "录制原声",
+                  song.recordingPlaybackUrl,
+                  song.recordingDurationSeconds ? `原始哼唱 · 约 ${song.recordingDurationSeconds} 秒` : "原始哼唱"
+                )}
               </View>
             ) : null}
 
@@ -104,7 +172,7 @@ export default function SongPage() {
                 <View
                   className="ghost"
                   onClick={() => {
-                    player.stop();
+                    stopAllPlayers();
                     Taro.navigateTo({ url: `/pages/full/index?demoId=${song.id}` });
                   }}
                 >
@@ -116,7 +184,7 @@ export default function SongPage() {
                 <View
                   className="ghost"
                   onClick={() => {
-                    player.stop();
+                    stopAllPlayers();
                     Taro.navigateTo({ url: `/pages/song/index?id=${song.parentDemoId}` });
                   }}
                 >
@@ -127,7 +195,7 @@ export default function SongPage() {
               <View
                 className="ghost"
                 onClick={() => {
-                  player.stop();
+                  stopAllPlayers();
                   Taro.reLaunch({ url: "/pages/index/index" });
                 }}
               >
