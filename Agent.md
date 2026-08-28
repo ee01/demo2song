@@ -7,10 +7,11 @@ This file records the local verification harness for future agents working on th
 | 目的 | 命令 |
 |------|------|
 | **本地开发**：启动小程序热更新编译（API 指向 localhost） | `yarn dev` |
+| **本地开发**：编译小程序本地版本（API 指向 localhost） | `yarn build:local` |
 | **本地开发**：启动 API 服务（端口 3100） | `yarn dev:api` |
 | **本地开发**：启动 Worker（真实 provider） | `yarn dev:worker` |
 | **本地开发**：启动 Worker（Mock 模式，不消耗配额） | `PROVIDER_MOCK_MODE=true yarn dev:worker` |
-| **小程序发布**：编译可上传版本（需先在 `.env` 设 `TARO_APP_API_BASE`） | `yarn build` |
+| **小程序发布**：编译可上传版本（API 指向生产后端） | `yarn build` |
 | **后端发布**：一键推送 api + worker 到云托管 | `yarn deploy` |
 | **后端发布**：单独部署 API | `yarn deploy:api` |
 | **后端发布**：单独部署 Worker | `yarn deploy:worker` |
@@ -18,7 +19,7 @@ This file records the local verification harness for future agents working on th
 | **静态检查** | `yarn typecheck && yarn test` |
 | **配置校验** | `yarn config:validate` |
 
-> `yarn dev` = `yarn dev:mp`，`yarn build` = 小程序生产编译，`yarn deploy` = `yarn deploy:cloudrun`
+> `yarn dev` = `yarn dev:mp`，`yarn build` = 小程序生产编译，`yarn build:local` = 小程序本地 API 编译，`yarn deploy` = `yarn deploy:cloudrun`
 
 ## Agent Workflow: New Feature Completion
 
@@ -47,7 +48,6 @@ When a new feature is completed, the agent MUST follow this sequence in order:
 4. **小程序生产编译并上传**（如小程序有变更）
 
    ```bash
-   # 确保 .env 中 TARO_APP_API_BASE 已设为云托管域名
    yarn build
    # 然后在微信开发者工具中「上传」
    ```
@@ -229,19 +229,25 @@ Notes:
 
 - `/open?projectpath=...` has returned `200 {}` in this environment.
 - `/preview?project=...&appid=...&qr-format=terminal` redirects to `/v2/preview` and has returned `200` with a terminal QR code.
-- `/compile?projectpath=...` returned `404` in this DevTools version; prefer `yarn dev:mp` or `npm run build -w @demo2song/mp-weixin` for compilation.
+- `/compile?projectpath=...` returned `404` in this DevTools version; prefer `yarn dev:mp` for watch compilation, `yarn build:local` for localhost compilation, or `yarn build` for production compilation.
 
 ## Mini Program API Base
 
 The mini program API base is compiled into the Taro build as `__API_BASE__`.
 
-Default local value:
+Default production value:
+
+```text
+https://api.demo2song.eexx.me
+```
+
+Local development commands set this explicitly to:
 
 ```text
 http://localhost:3100
 ```
 
-To build against a deployed API, set `TARO_APP_API_BASE` in the root `.env` before running the Taro build.
+Use `yarn build` for the production API build and `yarn build:local` for a local API build.
 
 Important: mini program runtime must not reference Node globals such as `process`. Check generated output when changing config:
 
@@ -264,6 +270,12 @@ For faster mini program-only verification:
 
 ```bash
 npm run build -w @demo2song/mp-weixin
+```
+
+For local API mini program verification:
+
+```bash
+yarn build:local
 ```
 
 ## E2E Validation (Local End-to-End)
@@ -341,22 +353,18 @@ curl -sS $CLOUD_API/config/public
 
 ### 关键说明
 
-`yarn dev`（即 `yarn dev:mp`）和 `yarn build`（不设 `TARO_APP_API_BASE`）编译出的版本 `__API_BASE__` 指向 `http://localhost:3100`，**仅适用于本地开发和 DevTools 调试，不能上传发布**。
+`yarn build` and `npm run build -w @demo2song/mp-weixin` compile a production mini program whose `__API_BASE__` points to `https://api.demo2song.eexx.me`.
+
+`yarn dev`（即 `yarn dev:mp`）和 `yarn build:local` 编译出的版本 `__API_BASE__` 指向 `http://localhost:3100`，**仅适用于本地开发和 DevTools 调试，不能上传发布**。
 
 发布时优先使用自定义 HTTPS 域名，例如 `api.demo2song.eexx.me`。CloudRun 默认域名经常会被微信公众平台识别为测试地址，不能直接加入合法域名白名单。
 
 ### 生产版本编译步骤
 
-在 `.env` 中设置云托管 API 域名，然后编译：
+直接编译生产版本：
 
 ```bash
-# 在 .env 中设置（或直接内联）
-# TARO_APP_API_BASE=https://api.demo2song.eexx.me
-
 yarn build
-
-# 内联方式（不改动 .env）：
-TARO_APP_API_BASE=https://api.demo2song.eexx.me yarn build
 ```
 
 编译产物在 `apps/mp-weixin/dist`，通过微信开发者工具「上传」功能提交到微信后台。
@@ -383,6 +391,7 @@ rg -n "__API_BASE__|localhost" apps/mp-weixin/dist -g '!**/*.map' | head -5
 - `POST /songs/demo-jobs` returning `RECORDING_NOT_FOUND` after a successful upload usually points to a user id mismatch or a CloudBase adapter/query issue.
 - `invalid params, invalid audio file` from MiniMax can be caused by MiniMax failing to consume a signed COS URL. The worker sends `audio_base64` for MiniMax to avoid this path.
 - `invalid params, invalid audio file` can also be caused by WeChat DevTools recordings that are actually WebM/Opus despite an `.mp3` filename. The worker uses `ffmpeg` to normalize references to MP3 before provider calls.
+- `This Music API is no longer available to new users` / HTTP 410 `status_code=2153` means MiniMax retired the free Music APIs (`music-cover-free`, `music-2.6-free`, `music-3.0-free`) on 2026-08-20. This account is an existing paying customer: set `models.minimax.demoModel` to `music-cover` and `fullModel` to `music-2.6`, then redeploy the worker. Do not switch to MiniMax Audio or self-host Music3 unless paid API access is actually gone.
 - `your current token plan not support model` means the configured MiniMax model is unavailable for the account. Use `music-cover` and set `models.minimax.allowPaidModels=true`.
 - `Token Plan usage limit reached` is a MiniMax account quota/credits issue, not a local app bug. Use mock mode for local harness validation until credits are available.
 - `webapi_getwxaasyncsecinfo:fail` appears to be a WeChat DevTools/internal SDK warning in this environment. Prioritize actionable app/API errors around it.

@@ -19,8 +19,8 @@
     "demoTargetSeconds": 30,
     "fullSongMinSeconds": 120,
     "fullSongMaxSeconds": 240,
-    "dailyDemoJobsPerUser": 3,
-    "dailyExtendJobsPerUser": 1,
+    "dailyDemoJobsPerUser": 0,
+    "dailyExtendJobsPerUser": 100,
     "refundQuotaOnProviderFailure": true
   },
   "storage": {

@@ -24,7 +24,7 @@ export class MurekaProvider implements MusicProvider {
   async createDemoSong(input: CreateDemoSongInput): Promise<ProviderSongResult> {
     const melodyFileId = await this.uploadByUrl(input.recording.signedUrl, "melody");
     return this.createTask("/v1/song/generate", {
-      lyrics: input.expandedLyrics,
+      lyrics: input.lyrics ?? "",
       prompt: input.prompt.style,
       melody_file_id: melodyFileId
     });
@@ -35,7 +35,7 @@ export class MurekaProvider implements MusicProvider {
     const baseAudio = input.demoSong ?? input.recording;
     const audioFileId = await this.uploadByUrl(baseAudio.signedUrl, "audio");
     return this.createTask("/v1/song/extend", {
-      lyrics: input.expandedLyrics,
+      lyrics: input.lyrics ?? "",
       audio_file_id: audioFileId,
       duration: input.targetDurationSeconds
     });

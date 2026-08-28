@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "npm run dev:weapp -w @demo2song/mp-weixin",
     "build": "npm run build -w @demo2song/mp-weixin",
+    "build:local": "npm run build:local -w @demo2song/mp-weixin",
     "deploy": "yarn deploy:cloudrun",
     "deploy:api": "node scripts/deploy-cloudrun.mjs --service api",
     "deploy:worker": "node scripts/deploy-cloudrun.mjs --service worker",

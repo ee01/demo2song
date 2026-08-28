@@ -4,7 +4,7 @@ All music providers must implement `MusicProvider` from `packages/shared/src/pro
 
 Current provider defaults:
 
-- MiniMax: default MVP provider. Uses `music-cover-free` or configured MiniMax model with the humming recording as `audio_url`. Extension is approximate only.
+- MiniMax: default MVP provider. Uses paid `music-cover` for humming covers (`audio_base64`) and `music-2.6` for full songs. Free `*-free` models were discontinued on 2026-08-20. Extension is approximate only.
 - Mureka: target provider for precise melody upload and song extension. The adapter is wired behind the same contract, so switching provider is configuration-driven.
 
 Provider switch checklist:

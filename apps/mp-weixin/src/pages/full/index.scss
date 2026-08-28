@@ -1,11 +1,18 @@
 @import "../../styles/theme.scss";
 
 .full-screen {
-  padding: 64px 44px;
+  padding: 64px 44px calc(196px + env(safe-area-inset-bottom));
 }
 .error-text {
   display: block;
   font-size: 26px;
   color: #ff9b8a;
   margin-bottom: 24px;
+}
+.draft-hint {
+  display: block;
+  margin: -8px 0 24px;
+  font-size: 23px;
+  line-height: 1.6;
+  color: rgba(201, 184, 255, 0.72);
 }

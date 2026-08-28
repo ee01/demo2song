@@ -3,6 +3,16 @@ import { z } from "zod";
 import { repository } from "../db.js";
 
 export async function jobRoutes(app: FastifyInstance): Promise<void> {
+  app.post("/jobs/:id/notification", async (request, reply) => {
+    const userId = String(request.headers["x-user-id"] ?? "");
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+    if (!userId) return reply.code(401).send({ error: "MISSING_USER" });
+    const job = await repository.findJobForUser(id, userId);
+    if (!job) return reply.code(404).send({ error: "JOB_NOT_FOUND" });
+    await repository.updateJob(id, { notificationAccepted: true, notificationError: undefined });
+    return reply.send({ ok: true });
+  });
+
   app.get("/jobs/:id", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
     const { id } = z.object({ id: z.string() }).parse(request.params);

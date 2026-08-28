@@ -25,6 +25,7 @@ const { env } = await import("./env.js");
 const { createProvider } = await import("./providers/index.js");
 const { WorkerCosStorage } = await import("./storage.js");
 const { normalizeReferenceAudioToMp3, providerResultToBuffer } = await import("./audio.js");
+const { sendGenerationNotice } = await import("./wechat-notification.js");
 
 const config = loadValidatedConfig();
 const storage = new WorkerCosStorage();
@@ -42,8 +43,8 @@ async function processOneJob(): Promise<boolean> {
     const prompt = song.prompt as unknown as SongPromptInput;
     const providerResult =
       job.kind === "demo"
-        ? await createDemo(provider, job.userId, song.recordingId, prompt, song.lyrics ?? "")
-        : await createFull(provider, job.userId, song.recordingId, job.requestPayload, prompt, song.lyrics ?? "");
+        ? await createDemo(provider, job.userId, song.recordingId, prompt, song.lyrics)
+        : await createFull(provider, job.userId, song.recordingId, job.requestPayload, prompt, song.lyrics);
 
     const audio = await providerResultToBuffer(providerResult);
     const objectKey = `songs/${job.userId}/${song.recordingId}/${song.stage}/${song.id}.mp3`;
@@ -55,12 +56,13 @@ async function processOneJob(): Promise<boolean> {
       objectKey,
       mimeType: providerResult.mimeType,
       durationSeconds: providerResult.durationSeconds,
-      title: providerResult.title,
+      title: providerResult.title ?? song.title,
       lyrics: providerResult.lyrics ?? song.lyrics,
       providerRaw: providerResult.raw,
       costEstimateUsd: providerResult.costEstimateUsd
     });
     await repository.updateJob(job.id, { status: "succeeded" });
+    await sendGenerationNotice(job, { ...song, status: "ready", objectKey, title: providerResult.title ?? song.title });
     await repository.createProviderEvent({
       provider: job.provider,
       jobId: job.id,
@@ -99,7 +101,7 @@ async function createDemo(
   userId: string,
   recordingId: string,
   prompt: SongPromptInput,
-  expandedLyrics: string
+  lyrics?: string
 ) {
   const recording = await repository.getRecordingById(recordingId);
   if (!recording) {
@@ -116,7 +118,7 @@ async function createDemo(
       durationSeconds: recording.durationSeconds
     },
     prompt,
-    expandedLyrics,
+    lyrics,
     targetDurationSeconds: config.limits.demoTargetSeconds
   });
 }
@@ -127,17 +129,15 @@ async function createFull(
   recordingId: string,
   requestPayload: unknown,
   prompt: SongPromptInput,
-  expandedLyrics: string
+  lyrics?: string
 ) {
   const recording = await repository.getRecordingById(recordingId);
   if (!recording) {
     throw new Error(`Recording not found: ${recordingId}`);
   }
-  const normalizedRecording = await normalizeReferenceAudioToMp3(await storage.getObject(recording.objectKey));
   const recordingInput = {
     objectKey: recording.objectKey,
     signedUrl: await storage.getSignedUrl(recording.objectKey, config.storage.signedUrlTtlSeconds),
-    audioBase64: normalizedRecording.toString("base64"),
     mimeType: "audio/mpeg",
     durationSeconds: recording.durationSeconds
   };
@@ -148,11 +148,9 @@ async function createFull(
     const parentSongId = String((requestPayload as { parentSongId?: string }).parentSongId ?? "");
     const parentSong = parentSongId ? await repository.getSongById(parentSongId) : null;
     if (parentSong?.objectKey) {
-      const normalizedDemo = await normalizeReferenceAudioToMp3(await storage.getObject(parentSong.objectKey));
       demoSong = {
         objectKey: parentSong.objectKey,
         signedUrl: await storage.getSignedUrl(parentSong.objectKey, config.storage.signedUrlTtlSeconds),
-        audioBase64: normalizedDemo.toString("base64"),
         mimeType: parentSong.mimeType ?? "audio/mpeg",
         durationSeconds: parentSong.durationSeconds ?? config.limits.demoTargetSeconds
       };
@@ -164,7 +162,7 @@ async function createFull(
     recording: recordingInput,
     demoSong,
     prompt,
-    expandedLyrics,
+    lyrics,
     targetDurationSeconds: config.limits.fullSongMinSeconds
   });
 }

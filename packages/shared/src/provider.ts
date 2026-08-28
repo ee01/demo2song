@@ -36,7 +36,7 @@ export interface CreateDemoSongInput {
   userId: string;
   recording: ProviderAudioInput;
   prompt: SongPromptInput;
-  expandedLyrics: string;
+  lyrics?: string;
   targetDurationSeconds: number;
 }
 
@@ -45,7 +45,7 @@ export interface CreateFullSongInput {
   recording: ProviderAudioInput;
   demoSong?: ProviderAudioInput;
   prompt: SongPromptInput;
-  expandedLyrics: string;
+  lyrics?: string;
   targetDurationSeconds: number;
 }
 

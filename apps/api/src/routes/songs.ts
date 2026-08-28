@@ -2,8 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { loadValidatedConfig } from "@demo2song/config";
 import type { SongRecord } from "@demo2song/data";
-import type { SongBrief, SongPromptInput } from "@demo2song/shared";
-import { expandLyrics } from "../services/lyrics.js";
+import type { GenerateFullDraftResponse, SongBrief, SongPromptInput } from "@demo2song/shared";
+import { generateLyricsDraft } from "../services/minimax-lyrics.js";
 import { assertAndConsumeQuota } from "../services/quota.js";
 import { repository } from "../db.js";
 import { getObjectStorage } from "../storage/index.js";
@@ -36,8 +36,25 @@ const demoJobSchema = z.object({
 });
 
 const fullJobSchema = z.object({
+  prompt: promptOverrideSchema.optional(),
+  title: z.string().max(80).optional(),
+  lyrics: z.string().max(3500).optional()
+});
+
+const fullDraftSchema = z.object({
   prompt: promptOverrideSchema.optional()
 });
+
+function mergeSongPrompt(base: SongPromptInput, override: Partial<SongPromptInput> = {}): SongPromptInput {
+  return {
+    style: override.style ?? base.style,
+    mood: override.mood ?? base.mood,
+    language: override.language ?? base.language,
+    vocalGender: override.vocalGender ?? base.vocalGender,
+    description: override.description ?? base.description,
+    lyricSeed: override.lyricSeed ?? base.lyricSeed
+  };
+}
 
 async function toPlaybackUrl(song: SongRecord): Promise<string | undefined> {
   if (!song.objectKey || song.status !== "ready") {
@@ -47,6 +64,7 @@ async function toPlaybackUrl(song: SongRecord): Promise<string | undefined> {
 }
 
 async function toBrief(song: SongRecord): Promise<SongBrief> {
+  const job = await repository.findJobForSongForUser(song.id, song.userId);
   return {
     id: song.id,
     userId: song.userId,
@@ -59,7 +77,10 @@ async function toBrief(song: SongRecord): Promise<SongBrief> {
     playbackUrl: await toPlaybackUrl(song),
     durationSeconds: song.durationSeconds,
     lyrics: song.lyrics,
-    createdAt: song.createdAt
+    createdAt: song.createdAt,
+    jobId: job?.id,
+    errorCode: song.errorCode,
+    errorMessage: song.errorMessage
   };
 }
 
@@ -87,7 +108,7 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(429).send({ error: "DAILY_DEMO_QUOTA_EXHAUSTED" });
     }
 
-    const expandedLyrics = expandLyrics(body.prompt);
+    const lyrics = body.prompt.lyricSeed?.trim() || undefined;
     const song = await repository.createSong({
       userId,
       recordingId: recording.id,
@@ -95,7 +116,7 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       status: "generating",
       provider: config.defaultProvider,
       prompt: body.prompt,
-      lyrics: expandedLyrics
+      lyrics
     });
 
     const job = await repository.createSongJob({
@@ -107,12 +128,36 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       provider: config.defaultProvider,
       requestPayload: {
         prompt: body.prompt,
-        expandedLyrics,
+        lyrics,
         targetDurationSeconds: config.limits.demoTargetSeconds
       }
     });
 
     return reply.code(201).send({ jobId: job.id, songId: song.id, status: job.status });
+  });
+
+  app.post("/songs/:id/full-draft", async (request, reply) => {
+    const userId = String(request.headers["x-user-id"] ?? "");
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+    if (!userId) {
+      return reply.code(401).send({ error: "MISSING_USER" });
+    }
+
+    const parentSong = await repository.findReadyDemoSongForUser(id, userId);
+    if (!parentSong) {
+      return reply.code(404).send({ error: "DEMO_SONG_NOT_READY" });
+    }
+
+    const body = fullDraftSchema.parse(request.body ?? {});
+    const prompt = mergeSongPrompt(parentSong.prompt as SongPromptInput, body.prompt);
+    try {
+      const generated = await generateLyricsDraft(prompt);
+      const payload: GenerateFullDraftResponse = generated;
+      return reply.send(payload);
+    } catch (error) {
+      request.log.warn({ error }, "MiniMax lyrics generation failed");
+      return reply.code(502).send({ error: "LYRICS_GENERATION_FAILED" });
+    }
   });
 
   app.post("/songs/:id/full-jobs", async (request, reply) => {
@@ -132,15 +177,7 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
 
     const body = fullJobSchema.parse(request.body ?? {});
     const base = parentSong.prompt as SongPromptInput;
-    const override = body.prompt ?? {};
-    const mergedPrompt: SongPromptInput = {
-      style: override.style ?? base.style,
-      mood: override.mood ?? base.mood,
-      language: override.language ?? base.language,
-      vocalGender: override.vocalGender ?? base.vocalGender,
-      description: override.description ?? base.description,
-      lyricSeed: override.lyricSeed ?? base.lyricSeed
-    };
+    const mergedPrompt = mergeSongPrompt(base, body.prompt);
 
     try {
       await assertAndConsumeQuota({
@@ -153,7 +190,8 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(429).send({ error: "DAILY_FULL_QUOTA_EXHAUSTED" });
     }
 
-    const expandedLyrics = expandLyrics(mergedPrompt);
+    const title = body.title?.trim() || parentSong.title || "我的完整歌曲";
+    const lyrics = body.lyrics?.trim() || undefined;
     const childSong = await repository.createSong({
       userId,
       recordingId: parentSong.recordingId,
@@ -161,8 +199,9 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       stage: "full",
       status: "generating",
       provider: config.defaultProvider,
+      title,
       prompt: mergedPrompt,
-      lyrics: expandedLyrics
+      lyrics
     });
 
     const job = await repository.createSongJob({

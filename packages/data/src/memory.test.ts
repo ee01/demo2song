@@ -13,6 +13,14 @@ describe("InMemoryRepository", () => {
     await expect(repo.consumeQuota({ userId: user.id, kind: "demo", limit: 1 })).resolves.toBe(false);
   });
 
+  it("does not consume quota when the configured limit is zero", async () => {
+    const repo = new InMemoryRepository();
+    const user = await repo.upsertUserByOpenId("openid-a");
+
+    await expect(repo.consumeQuota({ userId: user.id, kind: "demo", limit: 0 })).resolves.toBe(true);
+    await expect(repo.consumeQuota({ userId: user.id, kind: "demo", limit: 0 })).resolves.toBe(true);
+  });
+
   it("claims queued jobs with their songs", async () => {
     const repo = new InMemoryRepository();
     const user = await repo.upsertUserByOpenId("openid-a");

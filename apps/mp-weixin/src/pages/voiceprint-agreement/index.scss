@@ -1,0 +1,79 @@
+@import "../../styles/theme.scss";
+
+.agreement-page {
+  min-height: 100vh;
+  background: #05020d;
+  color: #f4f1ff;
+}
+
+.agreement-content {
+  padding: 56px 42px calc(168px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.agreement-title {
+  display: block;
+  font-size: 42px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.agreement-date {
+  display: block;
+  margin-top: 14px;
+  font-size: 24px;
+  line-height: 1.5;
+  color: #9d93c1;
+}
+
+.agreement-intro {
+  display: block;
+  margin-top: 30px;
+  font-size: 28px;
+  line-height: 1.75;
+  color: #ded8f5;
+}
+
+.agreement-section {
+  margin-top: 42px;
+}
+
+.section-title {
+  display: block;
+  font-size: 30px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.section-body {
+  display: block;
+  margin-top: 16px;
+  font-size: 26px;
+  line-height: 1.75;
+  color: #c9c1e7;
+}
+
+.agreement-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 20px 42px calc(24px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(5, 2, 13, 0), rgba(5, 2, 13, 0.96) 34%, #05020d);
+}
+
+.agreement-accept {
+  height: 84px;
+  line-height: 84px;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 800;
+  color: #ffffff;
+  border-radius: 42px;
+  background: linear-gradient(135deg, #7c6cff, #ff7ad9);
+  box-shadow: 0 16px 36px rgba(106, 92, 255, 0.36);
+}

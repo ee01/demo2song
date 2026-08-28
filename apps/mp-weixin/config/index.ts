@@ -5,7 +5,8 @@ import { config as loadDotenv } from "dotenv";
 
 loadDotenv({ path: path.resolve(nodeProcess.env.INIT_CWD ?? nodeProcess.cwd(), ".env") });
 
-const apiBase = nodeProcess.env.TARO_APP_API_BASE || "http://localhost:3100";
+const PRODUCTION_API_BASE = "https://api.demo2song.eexx.me";
+const apiBase = nodeProcess.env.TARO_APP_API_BASE || PRODUCTION_API_BASE;
 
 export default defineConfig({
   projectName: "demo2song",

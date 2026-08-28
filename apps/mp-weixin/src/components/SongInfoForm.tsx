@@ -1,12 +1,23 @@
-import { Text, Textarea, View } from "@tarojs/components";
+import { Input, Text, Textarea, View } from "@tarojs/components";
 import { genderOptions, languageOptions, moodOptions, styleOptions, type PromptForm } from "../constants";
+
+type GeneratedContentField = "title" | "lyrics";
 
 interface SongInfoFormProps {
   value: PromptForm;
   onChange: (next: PromptForm) => void;
+  showGeneratedContent?: boolean;
+  generatingContent?: boolean;
+  onGeneratedContentEdit?: (field: GeneratedContentField) => void;
 }
 
-export default function SongInfoForm({ value, onChange }: SongInfoFormProps) {
+export default function SongInfoForm({
+  value,
+  onChange,
+  showGeneratedContent = false,
+  generatingContent = false,
+  onGeneratedContentEdit
+}: SongInfoFormProps) {
   function toggleStyle(option: string) {
     const styleSel = value.styleSel.includes(option)
       ? value.styleSel.filter((item) => item !== option)
@@ -23,6 +34,58 @@ export default function SongInfoForm({ value, onChange }: SongInfoFormProps) {
 
   return (
     <View>
+      {showGeneratedContent ? (
+        <>
+          <View className="field">
+            <View className="field-label">
+              <Text>歌曲标题</Text>
+              <Text className="optional-tag">可修改</Text>
+              {generatingContent ? (
+                <View className="ai-generating">
+                  <View className="ai-generating-spinner" />
+                  <Text>生成中</Text>
+                </View>
+              ) : null}
+            </View>
+            <Input
+              className="text-input"
+              value={value.title}
+              maxlength={80}
+              placeholder="AI 正在构思歌名，也可以直接填写"
+              placeholderClass="ta-placeholder"
+              onInput={(event) => {
+                onGeneratedContentEdit?.("title");
+                onChange({ ...value, title: event.detail.value });
+              }}
+            />
+          </View>
+
+          <View className="field">
+            <View className="field-label">
+              <Text>完整歌词</Text>
+              <Text className="optional-tag">可修改</Text>
+              {generatingContent ? (
+                <View className="ai-generating">
+                  <View className="ai-generating-spinner" />
+                  <Text>生成中</Text>
+                </View>
+              ) : null}
+            </View>
+            <Textarea
+              className="ta lyrics-input"
+              placeholderClass="ta-placeholder"
+              value={value.lyrics}
+              maxlength={3500}
+              placeholder="AI 正在创作完整歌词，也可以直接填写"
+              onInput={(event) => {
+                onGeneratedContentEdit?.("lyrics");
+                onChange({ ...value, lyrics: event.detail.value });
+              }}
+            />
+          </View>
+        </>
+      ) : null}
+
       <View className="field">
         <View className="field-label">
           <Text>曲风</Text>

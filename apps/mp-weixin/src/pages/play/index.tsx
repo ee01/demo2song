@@ -16,7 +16,7 @@ export default function PlayPage() {
   const player = useAudioPlayer();
 
   useShareAppMessage(() => ({
-    title: song?.title ? `听听这首《${song.title}》` : "用哼唱生成你的专属歌曲",
+    title: song?.title ? `我在随哼创作了《${song.title}》，听听看` : "随哼：哼一段旋律，生成一首歌",
     path: `/pages/play/index?songId=${songId}`
   }));
 

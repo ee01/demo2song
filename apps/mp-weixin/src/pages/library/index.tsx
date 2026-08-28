@@ -15,6 +15,13 @@ function statusLabel(song: SongBrief): string {
   return "生成中…";
 }
 
+function formatCreatedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function LibraryPage() {
   const [data, setData] = useState<MySongsResponse>({ demos: [], fullSongs: [] });
   const [loading, setLoading] = useState(true);
@@ -35,20 +42,40 @@ export default function LibraryPage() {
   });
 
   function openSong(song: SongBrief) {
+    if (song.status === "generating") {
+      return;
+    }
+    if (song.status === "failed") {
+      Taro.showModal({
+        title: "生成失败原因",
+        content: song.errorMessage || (song.errorCode ? `错误代码：${song.errorCode}` : "生成服务暂时未能完成这首歌曲，请稍后重新尝试。"),
+        showCancel: false,
+        confirmText: "知道了"
+      });
+      return;
+    }
     Taro.navigateTo({ url: `/pages/song/index?id=${song.id}` });
   }
 
   const isEmpty = !loading && data.demos.length === 0 && data.fullSongs.length === 0;
 
   function renderItem(song: SongBrief, icon: string) {
+    const interactive = song.status !== "generating";
     return (
-      <View key={song.id} className="song-item" onClick={() => openSong(song)}>
+      <View
+        key={song.id}
+        className={`song-item ${interactive ? "interactive" : "disabled"} ${song.status}`}
+        onClick={interactive ? () => openSong(song) : undefined}
+      >
         <View className="si-icon">{icon}</View>
         <View className="si-main">
           <Text className="si-title">{song.title || (song.stage === "demo" ? "我的 demo" : "完整版歌曲")}</Text>
-          <Text className="si-meta">{statusLabel(song)}</Text>
+          <View className="si-details">
+            <Text className="si-meta">{statusLabel(song)}</Text>
+            <Text className="si-time">{formatCreatedAt(song.createdAt)}</Text>
+          </View>
         </View>
-        <Text className="si-arrow">›</Text>
+        {interactive ? <Text className="si-arrow">{song.status === "failed" ? "原因" : "›"}</Text> : null}
       </View>
     );
   }

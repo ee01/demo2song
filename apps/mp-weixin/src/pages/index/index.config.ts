@@ -1,6 +1,7 @@
 export default definePageConfig({
-  navigationBarTitleText: "哼唱成歌",
+  navigationBarTitleText: "随哼",
   navigationStyle: "custom",
+  enablePageMeta: true,
   navigationBarTextStyle: "white",
   backgroundColor: "#05020d",
   backgroundColorTop: "#0b0420",

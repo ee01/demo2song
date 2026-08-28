@@ -15,6 +15,26 @@ interface PlayerCardProps {
   children?: ReactNode;
 }
 
+interface PlayerButtonIconProps {
+  player: AudioPlayer;
+  url?: string;
+}
+
+export function PlayerButtonIcon({ player, url }: PlayerButtonIconProps) {
+  if (player.isLoading(url)) {
+    return <View className="play-loading" />;
+  }
+  if (player.isPlaying(url)) {
+    return (
+      <View className="pause-icon">
+        <View className="bar" />
+        <View className="bar" />
+      </View>
+    );
+  }
+  return <View className="play-triangle" />;
+}
+
 export default function PlayerCard({
   player,
   url,
@@ -30,6 +50,7 @@ export default function PlayerCard({
     [barsKey ?? url]
   );
   const playing = player.isPlaying(url);
+  const loading = player.isLoading(url);
 
   return (
     <View className="player-card">
@@ -40,14 +61,7 @@ export default function PlayerCard({
           player.toggle(url, { title });
         }}
       >
-        {playing ? (
-          <View className="pause-icon">
-            <View className="bar" />
-            <View className="bar" />
-          </View>
-        ) : (
-          <View className="play-triangle" />
-        )}
+        <PlayerButtonIcon player={player} url={url} />
       </View>
       <View className="pc-mid">
         <View className={`wave ${playing ? "playing" : ""}`}>
@@ -60,7 +74,7 @@ export default function PlayerCard({
           ))}
         </View>
         <Text className="pc-meta">
-          {playing ? "正在播放…" : title}
+          {loading ? "正在加载…" : playing ? "正在播放…" : title}
           {subtitle ? ` · ${subtitle}` : ""}
         </Text>
       </View>

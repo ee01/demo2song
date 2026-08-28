@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Text, View } from "@tarojs/components";
 import Taro, { useDidShow, useRouter, useShareAppMessage } from "@tarojs/taro";
 import type { SongDetail } from "@demo2song/shared";
-import PlayerCard from "../../components/PlayerCard";
+import PlayerCard, { PlayerButtonIcon } from "../../components/PlayerCard";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { authHeader, ensureLogin, request } from "../../utils/request";
 import { saveSong } from "../../utils/download";
@@ -18,7 +18,7 @@ export default function SongPage() {
   const backgroundPlayer = useAudioPlayer({ mode: "background" });
 
   useShareAppMessage(() => ({
-    title: song?.title ? `听听这首《${song.title}》` : "我用哼唱生成了一首歌，你也来试试",
+    title: song?.title ? `我在随哼创作了《${song.title}》，听听看` : "随哼：哼一段旋律，生成一首歌",
     path: `/pages/play/index?songId=${id}`
   }));
 
@@ -57,6 +57,7 @@ export default function SongPage() {
       return null;
     }
     const playing = inlinePlayer.isPlaying(url);
+    const loading = inlinePlayer.isLoading(url);
     return (
       <View
         className="reference-audio"
@@ -66,17 +67,10 @@ export default function SongPage() {
         }}
       >
         <View className="play-fab mini-fab">
-          {playing ? (
-            <View className="pause-icon">
-              <View className="bar" />
-              <View className="bar" />
-            </View>
-          ) : (
-            <View className="play-triangle" />
-          )}
+          <PlayerButtonIcon player={inlinePlayer} url={url} />
         </View>
         <View className="reference-mid">
-          <Text className="reference-title">{playing ? "正在播放…" : title}</Text>
+          <Text className="reference-title">{loading ? "正在加载…" : playing ? "正在播放…" : title}</Text>
           {subtitle ? <Text className="reference-subtitle">{subtitle}</Text> : null}
         </View>
       </View>
@@ -128,18 +122,15 @@ export default function SongPage() {
                 onClick={() => inlinePlayer.toggle(song.recordingPlaybackUrl, { title: "录制原声" })}
               >
                 <View className="play-fab">
-                  {inlinePlayer.isPlaying(song.recordingPlaybackUrl) ? (
-                    <View className="pause-icon">
-                      <View className="bar" />
-                      <View className="bar" />
-                    </View>
-                  ) : (
-                    <View className="play-triangle" />
-                  )}
+                  <PlayerButtonIcon player={inlinePlayer} url={song.recordingPlaybackUrl} />
                 </View>
                 <View className="pc-mid">
                   <Text className="pc-meta">
-                    {inlinePlayer.isPlaying(song.recordingPlaybackUrl) ? "正在播放…" : "试听原录音（哼唱）"}
+                    {inlinePlayer.isLoading(song.recordingPlaybackUrl)
+                      ? "正在加载…"
+                      : inlinePlayer.isPlaying(song.recordingPlaybackUrl)
+                        ? "正在播放…"
+                        : "试听原录音（哼唱）"}
                   </Text>
                 </View>
               </View>

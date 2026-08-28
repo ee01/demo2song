@@ -25,6 +25,8 @@ export interface PromptForm {
   genderIndex: number;
   description: string;
   lyricSeed: string;
+  title: string;
+  lyrics: string;
 }
 
 export function emptyPromptForm(): PromptForm {
@@ -34,7 +36,9 @@ export function emptyPromptForm(): PromptForm {
     languageIndex: 0,
     genderIndex: 0,
     description: "",
-    lyricSeed: ""
+    lyricSeed: "",
+    title: "",
+    lyrics: ""
   };
 }
 

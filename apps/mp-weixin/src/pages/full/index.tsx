@@ -1,15 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Text, View } from "@tarojs/components";
 import Taro, { useRouter } from "@tarojs/taro";
-import type { CreateFullJobResponse, JobDetail, SongBrief, SongDetail } from "@demo2song/shared";
+import type {
+  CreateFullJobResponse,
+  GenerateFullDraftResponse,
+  JobDetail,
+  PublicAppConfig,
+  SongDetail
+} from "@demo2song/shared";
 import SongInfoForm from "../../components/SongInfoForm";
 import PlayerCard from "../../components/PlayerCard";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { emptyPromptForm, inputToPromptForm, promptFormToInput, type PromptForm } from "../../constants";
 import { authHeader, ensureLogin, request, errorMessage } from "../../utils/request";
+import { registerGenerationNotice, requestGenerationNotice, saveActiveGeneration } from "../../utils/generation";
 import "./index.scss";
 
 type Phase = "config" | "generating" | "failed";
+type DraftPhase = "idle" | "generating" | "ready" | "failed";
 
 export default function FullPage() {
   const router = useRouter();
@@ -22,21 +30,56 @@ export default function FullPage() {
   const [jobId, setJobId] = useState<string>();
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const [draftPhase, setDraftPhase] = useState<DraftPhase>("idle");
+  const [noticeTemplateId, setNoticeTemplateId] = useState<string>();
+
+  const titleEditedRef = useRef(false);
+  const lyricsEditedRef = useRef(false);
 
   const player = useAudioPlayer();
 
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
+        request<PublicAppConfig>("/config/public").then((value) => setNoticeTemplateId(value.generationNoticeTemplateId)).catch(() => undefined);
         const uid = await ensureLogin();
+        if (!active) return;
         setUserId(uid);
         const detail = await request<SongDetail>(`/songs/${demoId}`, { header: authHeader(uid) });
+        if (!active) return;
+        const initialForm = inputToPromptForm(detail.prompt);
         setDemo(detail);
-        setForm(inputToPromptForm(detail.prompt));
+        setForm((current) => ({
+          ...initialForm,
+          title: titleEditedRef.current ? current.title : initialForm.title,
+          lyrics: lyricsEditedRef.current ? current.lyrics : initialForm.lyrics
+        }));
+
+        setDraftPhase("generating");
+        try {
+          const draft = await request<GenerateFullDraftResponse>(`/songs/${demoId}/full-draft`, {
+            method: "POST",
+            header: authHeader(uid),
+            data: { prompt: promptFormToInput(initialForm) }
+          });
+          if (!active) return;
+          setForm((current) => ({
+            ...current,
+            title: titleEditedRef.current ? current.title : draft.title,
+            lyrics: lyricsEditedRef.current ? current.lyrics : draft.lyrics
+          }));
+          setDraftPhase("ready");
+        } catch {
+          if (active) setDraftPhase("failed");
+        }
       } catch (loadError) {
-        setError(errorMessage(loadError, "加载失败"));
+        if (active) setError(errorMessage(loadError, "加载失败"));
       }
     })();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoId]);
 
@@ -66,6 +109,7 @@ export default function FullPage() {
   async function generateFull() {
     if (!demoId || submitting || phase === "generating") return;
     setError(undefined);
+    const noticePromise = requestGenerationNotice(noticeTemplateId);
     setSubmitting(true);
     try {
       const uid = userId ?? (await ensureLogin());
@@ -73,10 +117,17 @@ export default function FullPage() {
       const job = await request<CreateFullJobResponse>(`/songs/${demoId}/full-jobs`, {
         method: "POST",
         header: authHeader(uid),
-        data: { prompt: promptFormToInput(form) }
+        data: {
+          prompt: promptFormToInput(form),
+          title: form.title.trim() || undefined,
+          lyrics: form.lyrics.trim() || undefined
+        }
       });
-      setJobId(job.jobId);
-      setPhase("generating");
+      saveActiveGeneration({ jobId: job.jobId, songId: job.songId });
+      if (await noticePromise) {
+        await registerGenerationNotice(job.jobId, uid).catch(() => undefined);
+      }
+      Taro.redirectTo({ url: `/pages/generation/index?jobId=${job.jobId}&songId=${job.songId}` });
     } catch (submitError) {
       setPhase("failed");
       setError(errorMessage(submitError, "提交失败"));
@@ -122,24 +173,43 @@ export default function FullPage() {
           </View>
         ) : null}
 
-        <SongInfoForm value={form} onChange={setForm} />
+        <SongInfoForm
+          value={form}
+          onChange={setForm}
+          showGeneratedContent
+          generatingContent={draftPhase === "generating"}
+          onGeneratedContentEdit={(field) => {
+            if (field === "title") titleEditedRef.current = true;
+            if (field === "lyrics") lyricsEditedRef.current = true;
+          }}
+        />
+
+        {draftPhase === "failed" ? (
+          <Text className="draft-hint">AI 歌名和歌词生成失败，你仍然可以手动填写并直接生成。</Text>
+        ) : null}
 
         {error ? <Text className="error-text">{error}</Text> : null}
+      </View>
 
-        <View className="actions">
-          <View className={`primary ${submitting ? "loading disabled" : ""}`} onClick={generateFull}>
-            {submitting ? (
-              <View className="btn-loading">
-                <View className="btn-spinner" />
-                <Text>提交中…</Text>
-              </View>
-            ) : (
-              "生成完整版"
-            )}
-          </View>
-          <View className="ghost" onClick={() => Taro.navigateBack()}>
-            ← 返回
-          </View>
+      <View className="generation-action-bar">
+        <View
+          className="generation-action-secondary"
+          onClick={() => {
+            player.stop();
+            Taro.navigateBack();
+          }}
+        >
+          返回
+        </View>
+        <View className={`primary ${submitting ? "loading disabled" : ""}`} onClick={generateFull}>
+          {submitting ? (
+            <View className="btn-loading">
+              <View className="btn-spinner" />
+              <Text>提交中…</Text>
+            </View>
+          ) : (
+            "生成完整版"
+          )}
         </View>
       </View>
     </View>

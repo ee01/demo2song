@@ -47,12 +47,22 @@ export interface CreateDemoJobResponse {
 }
 export interface CreateFullJobRequest {
     prompt?: Partial<SongPromptInput>;
+    title?: string;
+    lyrics?: string;
 }
 export interface CreateFullJobResponse {
     jobId: string;
     songId: string;
     status: JobStatus;
     mode: "regenerate" | "extend";
+}
+export interface GenerateFullDraftRequest {
+    prompt?: Partial<SongPromptInput>;
+}
+export interface GenerateFullDraftResponse {
+    title: string;
+    lyrics: string;
+    styleTags?: string;
 }
 export interface SongDetail extends SongBrief {
     recordingId: string;

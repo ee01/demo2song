@@ -2,7 +2,9 @@ export default defineAppConfig({
   requiredBackgroundModes: ["audio"],
   pages: [
     "pages/index/index",
+    "pages/voiceprint-agreement/index",
     "pages/full/index",
+    "pages/generation/index",
     "pages/song/index",
     "pages/library/index",
     "pages/play/index"
@@ -10,7 +12,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: "light",
     navigationBarBackgroundColor: "#ffffff",
-    navigationBarTitleText: "Demo2Song",
+    navigationBarTitleText: "随哼",
     navigationBarTextStyle: "black"
   }
 });

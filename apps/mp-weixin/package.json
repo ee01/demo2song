@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:weapp": "taro build --type weapp --watch",
-    "build": "taro build --type weapp",
+    "dev:weapp": "TARO_APP_API_BASE=http://localhost:3100 taro build --type weapp --watch",
+    "build": "TARO_APP_API_BASE=https://api.demo2song.eexx.me taro build --type weapp",
+    "build:local": "TARO_APP_API_BASE=http://localhost:3100 taro build --type weapp",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

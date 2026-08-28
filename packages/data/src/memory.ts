@@ -34,6 +34,10 @@ export class InMemoryRepository implements Demo2SongRepository {
     return this.insert("users", { openId, sessionKey });
   }
 
+  async getUserById(id: string): Promise<UserRecord | null> {
+    return (this.data.users.get(id) as UserRecord | undefined) ?? null;
+  }
+
   async createRecording(input: CreateRecordingInput): Promise<RecordingRecord> {
     return this.insert("recordings", input);
   }
@@ -99,6 +103,12 @@ export class InMemoryRepository implements Demo2SongRepository {
     return job?.userId === userId ? job : null;
   }
 
+  async findJobForSongForUser(songId: string, userId: string): Promise<SongJobRecord | null> {
+    return ([...this.data.song_jobs.values()] as SongJobRecord[]).find(
+      (job) => job.songId === songId && job.userId === userId
+    ) ?? null;
+  }
+
   async claimNextQueuedJob(): Promise<(SongJobRecord & { song: SongRecord }) | null> {
     const jobs = [...this.data.song_jobs.values()]
       .filter((job: SongJobRecord) => job.status === "queued")
@@ -125,7 +135,7 @@ export class InMemoryRepository implements Demo2SongRepository {
 
   async consumeQuota(input: { userId: string; kind: SongJobRecord["kind"]; limit: number; dateKey?: string }): Promise<boolean> {
     if (input.limit <= 0) {
-      return false;
+      return true;
     }
     const dateKey = input.dateKey ?? todayKey();
     const existing = [...this.data.usage_quotas.values()].find(

@@ -293,7 +293,10 @@ const apiEnv = {
   WECHAT_LOGIN_STRICT: 'true',
   WECHAT_APP_ID:       process.env.WECHAT_APP_ID,
   WECHAT_APP_SECRET:   process.env.WECHAT_APP_SECRET,
+  WECHAT_SUBSCRIBE_TEMPLATE_ID: process.env.WECHAT_SUBSCRIBE_TEMPLATE_ID,
   COS_CDN_BASE_URL:    process.env.COS_CDN_BASE_URL,
+  MINIMAX_API_BASE:    process.env.MINIMAX_API_BASE || 'https://api.minimax.io',
+  MINIMAX_API_KEY:     process.env.MINIMAX_API_KEY,
   MINIMAX_GROUP_ID:    process.env.MINIMAX_GROUP_ID,
 };
 
@@ -305,6 +308,9 @@ const workerEnv = {
   MINIMAX_API_KEY:     process.env.MINIMAX_API_KEY,
   MINIMAX_GROUP_ID:    process.env.MINIMAX_GROUP_ID,
   MUREKA_API_KEY:      process.env.MUREKA_API_KEY,
+  WECHAT_APP_ID:       process.env.WECHAT_APP_ID,
+  WECHAT_APP_SECRET:   process.env.WECHAT_APP_SECRET,
+  WECHAT_SUBSCRIBE_TEMPLATE_ID: process.env.WECHAT_SUBSCRIBE_TEMPLATE_ID,
 };
 
 console.log('=== demo2song 云托管部署 ===');

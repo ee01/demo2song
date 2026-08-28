@@ -36,6 +36,10 @@ export class CloudBaseRepository implements Demo2SongRepository {
     return this.insert<UserRecord>("users", { openId, sessionKey });
   }
 
+  async getUserById(id: string): Promise<UserRecord | null> {
+    return this.findOne<UserRecord>("users", { id });
+  }
+
   async createRecording(input: CreateRecordingInput): Promise<RecordingRecord> {
     return this.insert<RecordingRecord>("recordings", input);
   }
@@ -105,6 +109,10 @@ export class CloudBaseRepository implements Demo2SongRepository {
     return this.findOne<SongJobRecord>("song_jobs", { id, userId });
   }
 
+  async findJobForSongForUser(songId: string, userId: string): Promise<SongJobRecord | null> {
+    return this.findOne<SongJobRecord>("song_jobs", { songId, userId });
+  }
+
   async claimNextQueuedJob(): Promise<(SongJobRecord & { song: SongRecord }) | null> {
     const result = await this.collection("song_jobs")
       .where({ status: "queued" })
@@ -134,7 +142,7 @@ export class CloudBaseRepository implements Demo2SongRepository {
 
   async consumeQuota(input: { userId: string; kind: SongJobRecord["kind"]; limit: number; dateKey?: string }): Promise<boolean> {
     if (input.limit <= 0) {
-      return false;
+      return true;
     }
     const dateKey = input.dateKey ?? todayKey();
     const existing = await this.findOne<UsageQuotaRecord>("usage_quotas", {

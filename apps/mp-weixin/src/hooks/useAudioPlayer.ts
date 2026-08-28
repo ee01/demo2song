@@ -10,10 +10,12 @@ export interface AudioPlaybackMeta {
 
 export interface AudioPlayer {
   playingUrl?: string;
+  loadingUrl?: string;
   progress: number;
   toggle: (url?: string, meta?: AudioPlaybackMeta) => void;
   stop: () => void;
   isPlaying: (url?: string) => boolean;
+  isLoading: (url?: string) => boolean;
 }
 
 interface UseAudioPlayerOptions {
@@ -25,9 +27,11 @@ export function useAudioPlayer(options: UseAudioPlayerOptions = {}): AudioPlayer
   const audioRef = useRef<Taro.InnerAudioContext>();
   const backgroundRef = useRef<Taro.BackgroundAudioManager>();
   const currentUrlRef = useRef<string>();
-  const backgroundSessionRef = useRef(0);
+  const sessionRef = useRef(0);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const mountedRef = useRef(true);
   const [playingUrl, setPlayingUrl] = useState<string>();
+  const [loadingUrl, setLoadingUrl] = useState<string>();
   const [progress, setProgress] = useState(0);
 
   function setSafePlayingUrl(url?: string) {
@@ -42,9 +46,52 @@ export function useAudioPlayer(options: UseAudioPlayerOptions = {}): AudioPlayer
     }
   }
 
+  function setSafeLoadingUrl(url?: string) {
+    if (mountedRef.current) {
+      setLoadingUrl(url);
+    }
+  }
+
+  function clearLoadingTimer() {
+    if (loadingTimerRef.current) {
+      clearTimeout(loadingTimerRef.current);
+      loadingTimerRef.current = undefined;
+    }
+  }
+
+  function startLoadingTimer(url: string, session: number) {
+    clearLoadingTimer();
+    loadingTimerRef.current = setTimeout(() => {
+      if (sessionRef.current === session && currentUrlRef.current === url) {
+        setSafeLoadingUrl(url);
+      }
+    }, 1000);
+  }
+
+  function markStarted(url: string, session: number) {
+    if (sessionRef.current !== session || currentUrlRef.current !== url) {
+      return;
+    }
+    clearLoadingTimer();
+    setSafeLoadingUrl(undefined);
+    setSafePlayingUrl(url);
+  }
+
+  function finish(session: number) {
+    if (sessionRef.current !== session) {
+      return;
+    }
+    clearLoadingTimer();
+    currentUrlRef.current = undefined;
+    setSafePlayingUrl(undefined);
+    setSafeLoadingUrl(undefined);
+    setSafeProgress(0);
+  }
+
   function stop() {
+    sessionRef.current += 1;
+    clearLoadingTimer();
     if (mode === "background") {
-      backgroundSessionRef.current += 1;
       const audio = backgroundRef.current ?? Taro.getBackgroundAudioManager();
       backgroundRef.current = audio;
       audio.stop();
@@ -55,6 +102,7 @@ export function useAudioPlayer(options: UseAudioPlayerOptions = {}): AudioPlayer
     }
     currentUrlRef.current = undefined;
     setSafePlayingUrl(undefined);
+    setSafeLoadingUrl(undefined);
     setSafeProgress(0);
   }
 
@@ -62,54 +110,41 @@ export function useAudioPlayer(options: UseAudioPlayerOptions = {}): AudioPlayer
     if (!url) {
       return;
     }
-    if (playingUrl === url) {
+    if (currentUrlRef.current === url) {
       stop();
       return;
     }
     stop();
+    const session = sessionRef.current + 1;
+    sessionRef.current = session;
     currentUrlRef.current = url;
+    setSafePlayingUrl(url);
+    setSafeLoadingUrl(undefined);
+    startLoadingTimer(url, session);
 
     if (mode === "background") {
       const audio = Taro.getBackgroundAudioManager();
-      const session = backgroundSessionRef.current + 1;
-      backgroundSessionRef.current = session;
       backgroundRef.current = audio;
-      audio.title = meta?.title || "Demo2Song";
-      audio.epname = meta?.epname || meta?.title || "Demo2Song";
-      audio.singer = meta?.singer || "Demo2Song";
+      audio.title = meta?.title || "随哼";
+      audio.epname = meta?.epname || meta?.title || "随哼";
+      audio.singer = meta?.singer || "随哼";
       if (meta?.coverImgUrl) {
         audio.coverImgUrl = meta.coverImgUrl;
       }
       audio.onPlay(() => {
-        if (backgroundSessionRef.current === session) {
-          setSafePlayingUrl(url);
-        }
+        markStarted(url, session);
       });
       audio.onTimeUpdate(() => {
-        if (backgroundSessionRef.current !== session) {
+        if (sessionRef.current !== session) {
           return;
         }
+        markStarted(url, session);
         const total = audio.duration || 1;
         setSafeProgress(Math.min(1, audio.currentTime / total));
       });
-      audio.onEnded(() => {
-        if (backgroundSessionRef.current === session) {
-          setSafePlayingUrl(undefined);
-          setSafeProgress(0);
-        }
-      });
-      audio.onStop(() => {
-        if (backgroundSessionRef.current === session) {
-          setSafePlayingUrl(undefined);
-          setSafeProgress(0);
-        }
-      });
-      audio.onError(() => {
-        if (backgroundSessionRef.current === session) {
-          setSafePlayingUrl(undefined);
-          setSafeProgress(0);
-        }
-      });
+      audio.onEnded(() => finish(session));
+      audio.onStop(() => finish(session));
+      audio.onError(() => finish(session));
       audio.src = url;
       audio.play();
       return;
@@ -118,26 +153,26 @@ export function useAudioPlayer(options: UseAudioPlayerOptions = {}): AudioPlayer
     const audio = Taro.createInnerAudioContext();
     audioRef.current = audio;
     audio.src = url;
-    audio.onPlay(() => setSafePlayingUrl(url));
+    audio.onPlay(() => markStarted(url, session));
     audio.onTimeUpdate(() => {
+      if (sessionRef.current !== session) {
+        return;
+      }
+      markStarted(url, session);
       const total = audio.duration || 1;
       setSafeProgress(Math.min(1, audio.currentTime / total));
     });
-    audio.onEnded(() => {
-      setSafePlayingUrl(undefined);
-      setSafeProgress(0);
-    });
-    audio.onStop(() => setSafePlayingUrl(undefined));
-    audio.onError(() => {
-      setSafePlayingUrl(undefined);
-      setSafeProgress(0);
-    });
+    audio.onEnded(() => finish(session));
+    audio.onStop(() => finish(session));
+    audio.onError(() => finish(session));
     audio.play();
   }
 
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      sessionRef.current += 1;
+      clearLoadingTimer();
       if (mode === "inner") {
         audioRef.current?.stop();
         audioRef.current?.destroy();
@@ -148,9 +183,11 @@ export function useAudioPlayer(options: UseAudioPlayerOptions = {}): AudioPlayer
 
   return {
     playingUrl,
+    loadingUrl,
     progress,
     toggle,
     stop,
-    isPlaying: (url?: string) => Boolean(url) && playingUrl === url
+    isPlaying: (url?: string) => Boolean(url) && playingUrl === url,
+    isLoading: (url?: string) => Boolean(url) && loadingUrl === url
   };
 }

@@ -12,6 +12,14 @@ vi.mock("./storage/index.js", () => ({
   })
 }));
 
+vi.mock("./services/minimax-lyrics.js", () => ({
+  generateLyricsDraft: async () => ({
+    title: "旧街晚风",
+    lyrics: "[Verse]\n风吹过旧街角\n[Chorus]\n我还记得那盏灯",
+    styleTags: "Mandopop, Nostalgic"
+  })
+}));
+
 describe("api app", () => {
   it("returns health", async () => {
     const app = await buildApp();
@@ -47,12 +55,32 @@ describe("api app", () => {
     expect(demoJobResponse.statusCode).toBe(201);
     const demoJob = demoJobResponse.json<{ jobId: string; songId: string; status: string }>();
     expect(demoJob.status).toBe("queued");
+    const notificationResponse = await app.inject({
+      method: "POST",
+      url: `/jobs/${demoJob.jobId}/notification`,
+      headers: { "x-user-id": userId }
+    });
+    expect(notificationResponse.statusCode).toBe(200);
+    expect((await repository.findJobForUser(demoJob.jobId, userId))?.notificationAccepted).toBe(true);
 
     await repository.updateSong(demoJob.songId, {
       status: "ready",
       objectKey: `songs/${userId}/${recording.id}/demo/${demoJob.songId}.mp3`,
       durationSeconds: 12,
       title: "Demo"
+    });
+
+    const fullDraftResponse = await app.inject({
+      method: "POST",
+      url: `/songs/${demoJob.songId}/full-draft`,
+      headers: { "x-user-id": userId },
+      payload: { prompt: { mood: "nostalgic" } }
+    });
+    expect(fullDraftResponse.statusCode).toBe(200);
+    expect(fullDraftResponse.json()).toEqual({
+      title: "旧街晚风",
+      lyrics: "[Verse]\n风吹过旧街角\n[Chorus]\n我还记得那盏灯",
+      styleTags: "Mandopop, Nostalgic"
     });
 
     const fullJobResponse = await app.inject({
@@ -63,7 +91,9 @@ describe("api app", () => {
         prompt: {
           mood: "nostalgic",
           lyricSeed: "风吹过旧街角"
-        }
+        },
+        title: "用户修改后的歌名",
+        lyrics: "[Verse]\n用户修改后的歌词\n[Chorus]\n不会被覆盖"
       }
     });
     expect(fullJobResponse.statusCode).toBe(201);
@@ -76,7 +106,8 @@ describe("api app", () => {
     expect(fullSong?.parentSongId).toBe(demoJob.songId);
     expect((fullSong?.prompt as typeof prompt).style).toBe(prompt.style);
     expect((fullSong?.prompt as { mood?: string }).mood).toBe("nostalgic");
-    expect(fullSong?.lyrics).toContain("风吹过旧街角");
+    expect(fullSong?.title).toBe("用户修改后的歌名");
+    expect(fullSong?.lyrics).toBe("[Verse]\n用户修改后的歌词\n[Chorus]\n不会被覆盖");
 
     await repository.updateSong(fullJob.songId, {
       status: "ready",
@@ -95,6 +126,7 @@ describe("api app", () => {
     expect(library.demos).toEqual([]);
     expect(library.fullSongs).toHaveLength(1);
     expect(library.fullSongs[0].id).toBe(fullJob.songId);
+    expect(library.fullSongs[0].jobId).toBe(fullJob.jobId);
 
     const demoDetailResponse = await app.inject({
       method: "GET",

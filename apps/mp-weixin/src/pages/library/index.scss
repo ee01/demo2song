@@ -1,5 +1,66 @@
 @import "../../styles/theme.scss";
 
 .library-screen {
-  padding: 64px 44px;
+  padding: 56px 36px;
+}
+
+.library-screen .list {
+  gap: 12px;
+}
+
+.library-screen .song-item {
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 20px;
+}
+
+.library-screen .song-item.disabled {
+  opacity: 0.72;
+}
+
+.library-screen .song-item.failed {
+  border-color: rgba(255, 116, 135, 0.18);
+}
+
+.library-screen .song-item .si-icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 17px;
+  font-size: 30px;
+}
+
+.library-screen .si-title {
+  font-size: 27px;
+  margin-bottom: 5px;
+}
+
+.library-screen .si-details {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.library-screen .si-meta,
+.library-screen .si-time {
+  font-size: 20px;
+  color: #8d82b0;
+}
+
+.library-screen .song-item.failed .si-meta {
+  color: #ff8799;
+}
+
+.library-screen .si-time {
+  color: #6f6796;
+}
+
+.library-screen .si-arrow {
+  min-width: 36px;
+  text-align: right;
+  font-size: 24px;
+}
+
+.library-screen .song-item.failed .si-arrow {
+  font-size: 20px;
+  color: #ff8799;
 }

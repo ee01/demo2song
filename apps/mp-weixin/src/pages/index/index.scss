@@ -6,7 +6,18 @@
 .record-screen {
   justify-content: space-between;
   align-items: center;
+  height: 100vh;
+  overflow: hidden;
   padding: 88px 48px 64px;
+}
+
+.record-touch-layer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
 }
 
 .user-entry .u-col {
@@ -266,20 +277,56 @@
   margin-top: 14px;
 }
 
+.voiceprint-consent {
+  position: fixed;
+  left: 28px;
+  right: 28px;
+  bottom: calc(30px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 24px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(21, 15, 43, 0.94);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.36);
+  animation: voiceprintSlideUp 0.22s ease-out;
+}
+.voiceprint-copy {
+  flex: 1;
+  font-size: 24px;
+  line-height: 1.55;
+  color: #f4f1ff;
+}
+.voiceprint-link {
+  color: #c9a9ff;
+  font-weight: 700;
+}
+.voiceprint-agree {
+  flex: none;
+  min-width: 112px;
+  height: 64px;
+  line-height: 64px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  border-radius: 32px;
+  background: linear-gradient(135deg, #7c6cff, #ff7ad9);
+  box-shadow: 0 10px 26px rgba(106, 92, 255, 0.36);
+}
+@keyframes voiceprintSlideUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* =========================================================
    SCREEN 2 / 3 · 详情与结果（首页内）
    ========================================================= */
 .details-screen {
-  padding: 96px 44px 64px;
-}
-.rerecord {
-  flex: none;
-  padding: 16px 24px;
-  font-size: 24px;
-  color: #f4f1ff;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
+  padding: 96px 44px calc(196px + env(safe-area-inset-bottom));
 }
 
 .result-screen {

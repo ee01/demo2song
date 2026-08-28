@@ -9,7 +9,9 @@ import { recordingRoutes } from "./routes/recordings.js";
 import { songRoutes } from "./routes/songs.js";
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  // Keep Fastify's request-body ceiling aligned with the CloudBase CloudRun
+  // gateway and the multipart file limit. Fastify otherwise defaults to 1 MiB.
+  const app = Fastify({ logger: true, bodyLimit: 20 * 1024 * 1024 });
 
   await app.register(cors, { origin: true });
   await app.register(multipart, {

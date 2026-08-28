@@ -59,6 +59,9 @@ export interface SongJobRecord extends BaseRecord {
   errorCode?: string;
   errorMessage?: string;
   lockedAt?: string;
+  notificationAccepted?: boolean;
+  notificationSentAt?: string;
+  notificationError?: string;
 }
 
 export interface UsageQuotaRecord extends BaseRecord {
@@ -92,6 +95,7 @@ export type CreateSongJobInput = Omit<SongJobRecord, keyof BaseRecord>;
 
 export interface Demo2SongRepository {
   upsertUserByOpenId(openId: string, sessionKey?: string): Promise<UserRecord>;
+  getUserById(id: string): Promise<UserRecord | null>;
   createRecording(input: CreateRecordingInput): Promise<RecordingRecord>;
   findRecordingForUser(id: string, userId: string): Promise<RecordingRecord | null>;
   getRecordingById(id: string): Promise<RecordingRecord | null>;
@@ -105,6 +109,7 @@ export interface Demo2SongRepository {
   updateSong(id: string, patch: Partial<SongRecord>): Promise<void>;
   createSongJob(input: CreateSongJobInput): Promise<SongJobRecord>;
   findJobForUser(id: string, userId: string): Promise<SongJobRecord | null>;
+  findJobForSongForUser(songId: string, userId: string): Promise<SongJobRecord | null>;
   claimNextQueuedJob(): Promise<(SongJobRecord & { song: SongRecord }) | null>;
   updateJob(id: string, patch: Partial<SongJobRecord>): Promise<void>;
   createProviderEvent(input: Omit<ProviderEventRecord, keyof BaseRecord>): Promise<ProviderEventRecord>;

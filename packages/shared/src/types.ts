@@ -35,6 +35,9 @@ export interface SongBrief {
   durationSeconds?: number;
   lyrics?: string;
   createdAt: string;
+  jobId?: string;
+  errorCode?: string;
+  errorMessage?: string;
 }
 
 export interface SongPromptInput {
@@ -59,6 +62,8 @@ export interface CreateDemoJobResponse {
 
 export interface CreateFullJobRequest {
   prompt?: Partial<SongPromptInput>;
+  title?: string;
+  lyrics?: string;
 }
 
 export interface CreateFullJobResponse {
@@ -66,6 +71,16 @@ export interface CreateFullJobResponse {
   songId: string;
   status: JobStatus;
   mode: "regenerate" | "extend";
+}
+
+export interface GenerateFullDraftRequest {
+  prompt?: Partial<SongPromptInput>;
+}
+
+export interface GenerateFullDraftResponse {
+  title: string;
+  lyrics: string;
+  styleTags?: string;
 }
 
 export interface SongDetail extends SongBrief {
@@ -110,4 +125,5 @@ export interface PublicAppConfig {
   maxRecordingSeconds: number;
   demoTargetSeconds: number;
   enableFullSong: boolean;
+  generationNoticeTemplateId?: string;
 }

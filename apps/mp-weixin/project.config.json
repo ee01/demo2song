@@ -1,8 +1,8 @@
 {
   "miniprogramRoot": "dist/",
-  "projectname": "demo2song",
+  "projectname": "随哼",
   "description": "Humming to song MVP",
-  "appid": "wx2b028e2d81a97ca2",
+  "appid": "wx843818a91b6094ef",
   "setting": {
     "urlCheck": false,
     "es6": true,
