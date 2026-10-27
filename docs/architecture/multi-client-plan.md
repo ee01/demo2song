@@ -1,607 +1,670 @@
-# 随哼 · iOS 端与多端架构方案（Plan + Spec）
+# 随哼 · iOS 端与多端架构开发计划（v2 · 可执行版）
 
-> 状态：Draft v1 · 2026-10-27 · 只含方案，不含功能代码
-> 适用仓库：`ee01/demo2song`（基于 `main@d24afe0` 源码分析）
-
----
-
-## 0. 一页结论
-
-| 问题 | 结论 |
-|---|---|
-| 独立仓库 or 同仓？ | **同一个 monorepo**，新增 `apps/ios`。不拆仓：AI agent 需要在一次上下文里同时看到契约、后端、各端实现和 UI 基准，拆仓会让「一个需求 → 多端改动」变成跨仓协调。 |
-| 共用代码 or 跨端框架？ | **不共用 UI 代码，共用「意图层」**。iOS 用原生 SwiftUI；小程序继续 Taro。共享的是：API 契约（OpenAPI）、设计 Token、文案、状态机、Fixture 数据、HTML 黄金原型、验收用例。 |
-| 为什么不用 Taro-RN / RN / Flutter / KMP 一套代码？ | 随哼的核心体验是 **录音 + 后台播放 + 长耗时生成的等待**，这三件事在 iOS 上最好的形态（AVAudioEngine 实时电平、锁屏 Now Playing、Live Activity/灵动岛、App Intents）都是原生能力；而小程序端无论如何都是一套独立 UI（Taro），「一份代码」并不能真的减少一端。既然开发成本不是约束，就用原生拿到体验上限，再用 Harness 解决「新功能多端自动适配」。 |
-| 新功能怎么多端自动适配？ | **Feature Capsule + 多端 Harness**：一个需求先落成一个胶囊目录（spec / 状态机 / 契约 diff / 文案 / Fixture / **HTML 黄金原型** / 验收用例），然后由 Harness 并行派发给「后端 agent / 小程序 agent / iOS agent」，各端用同一份 Fixture 渲染截图，与 HTML 原型逐状态做结构 + 视觉比对，不达标自动回修，最后输出 Parity 报告。 |
-| UI 基准用什么？ | **HTML 原型作为唯一 UI 真相（Golden）**，与你的偏好一致。仓库里已有 `docs/prototype/index.html`，它会升级为「可按状态切换、带锚点、只读 Token」的规范化原型。 |
-| iOS 上线前必须改的后端问题 | ① 鉴权：现在只靠 `x-user-id` 请求头，**任何人可冒充任意用户**，必须换成签名 token；② 登录只支持微信 `jscode2session`；③ 通知只支持微信订阅消息；④ 上传受 CloudBase 网关 ~1MiB 限制；⑤ 分享落地页只存在于小程序内。详见 §3。 |
+> 状态：**Ready for Dev** · v2 · 2026-10-28
+> 基线：`main@d24afe0`。v1（选型推导与方案对比）见本文件 git 历史，本版只保留结论 + 可执行规范 + 任务清单。
 
 ---
 
-## 1. 理解：核心用户、任务与成功标准
+## 0. 已确认决策
 
-- **核心用户**：有旋律灵感但不会编曲的普通人；灵感是突发的（洗澡、走路、睡前）。
-- **核心任务**：哼一段（6–60s）→ 补充风格/情绪/歌词片段 → 等待生成 demo → 满意后生成完整版 → 播放 / 下载 / 分享。
-- **iOS 端成功标准**：
-  1. 从「想到旋律」到「开始录音」≤ 1 步（锁屏 / 灵动岛 / Siri 均可触发）；
-  2. 生成等待期间可以离开 App，结果主动送达；
-  3. 账号与小程序数据互通（同一个人的歌在两端都能看到）。
-- **架构成功标准**：提一个需求，Harness 能在小程序与 iOS 两端产出功能一致、视觉对齐黄金原型的实现，并给出可审阅的差异报告。
-
-> 假设（若不对请指出，会影响 §3/§8）：A1 本期只做 iOS，但架构要能低成本加 Android / Web；A2 iOS 账号需与微信小程序账号打通；A3 iOS 首版不做付费（若要卖次数，必须走 Apple IAP）。
-
----
-
-## 2. 现状诊断（基于源码）
-
-### 2.1 现有结构
-
-```
-apps/
-  api/         Fastify，鉴权/上传/配额/建任务/签名 URL     → 已基本端无关
-  worker/      轮询 song_jobs，调 MiniMax/Mureka，转存 COS  → 端无关
-  mp-weixin/   Taro 4 + React 18，7 个页面                  → 微信专属
-packages/
-  shared/      TS 类型 + provider contract                   → 可升级为契约源
-  config/      运营配置 + JSON Schema                        → 端无关
-  data/        CloudBase repository + memory repository      → 端无关
-docs/prototype/index.html   单文件原型（3 个 screen）          → 黄金原型的种子
-```
-
-结论：**后端 70% 已经是端无关的**，主要问题集中在「身份、通知、上传、分享」四个和微信强耦合的边界，以及「契约只存在于 TS 类型里，Swift 无法消费」。
-
-### 2.2 与微信强耦合点（iOS 必须改）
-
-| # | 位置 | 问题 | iOS 影响 |
+| # | 决策 | 结论 | 来源 |
 |---|---|---|---|
-| C1 | `apps/api/src/routes/*.ts` 全部 `request.headers["x-user-id"]` | 用户身份由客户端自报，无签名 | **安全漏洞**；iOS 公开分发后更易被抓包冒用 |
-| C2 | `apps/api/src/routes/auth.ts` | 只有 `/auth/wechat-login`（`jscode2session`） | iOS 无法登录 |
-| C3 | `packages/data/src/types.ts` `UserRecord.openId` | 用户主键语义 = 小程序 openid | iOS 微信登录拿到的是**开放平台 App openid**，与小程序 openid 不同，只有 `unionid` 相同 |
-| C4 | `apps/worker/src/wechat-notification.ts` + `jobs.ts` 的 `notificationAccepted` | 完成通知只有微信订阅消息 | iOS 需要 APNs / Live Activity 推送 |
-| C5 | `apps/api/src/app.ts` + 录音 64kbps 的注释 | 文件经 API 中转，受 CloudBase 网关 ~1MiB 限制 | iOS 可录更高音质（AAC 128k），需直传 COS |
-| C6 | `apps/mp-weixin/src/pages/play` | 公开试听页只在小程序里 | iOS 分享出去的链接没有落地页 |
-| C7 | `apps/mp-weixin` 中 `errorMessage()` 直接展示后端 `error` 字符串 | 错误码→文案映射散落在客户端 | 两端文案会漂移 |
-| C8 | `GET /songs` 对每首 demo 调 `countReadyFullForDemo`，对每首调 `findJobForSongForUser` | N+1 查询 | 原生列表滑动更快暴露延迟 |
-| C9 | 客户端 2.5s 轮询 `/jobs/:id` | 只有轮询 | iOS 后台被挂起后轮询失效 |
-
-### 2.3 可直接复用的资产
-
-- `SongPromptInput / SongBrief / SongDetail / JobDetail / PublicAppConfig` 等类型 → 契约的起点；
-- `apps/api` 中的 zod schema（`promptSchema` 等）→ 可直接生成 OpenAPI；
-- `PROVIDER_MOCK_MODE` + `memory` repository → Harness 的确定性 Mock 后端；
-- `theme.scss` 与 `docs/prototype/index.html` 的 `:root` 变量 → Design Token 的起点；
-- `constants.ts` 中的风格/情绪/语言/性别选项 → 应上移为服务端下发或共享枚举。
+| D1 | 仓库形态 | 同一 monorepo，新增 `apps/ios`、`apps/web-share`、`design/prototype`、`specs/`、`tools/harness` | v1 |
+| D2 | iOS 技术栈 | 原生 SwiftUI（iOS 17+，Swift 6），小程序继续 Taro；共享「意图层」而非 UI 代码 | v1 |
+| D3 | 账号打通 | **微信开放平台 unionid** 作为跨端合并键；Apple 登录用户可后续绑定微信，冲突时合并 | E 确认 |
+| D4 | UI 基准 | **全站一个大原型**（`design/prototype`），功能胶囊只引用其中的 screen/state | E 确认 |
+| D5 | 多端适配 | Feature Capsule + Harness（结构/文案/视觉三层比对 + Parity 报告） | v1 |
+| D6 | 本期范围 | iOS（不含 Android/Web App）；首版不收费（不接 IAP）；保留扩展位 | v1 假设，未被否定 |
 
 ---
 
-## 3. 选型对比
+## 1. 范围
 
-评分 1–5，权重按你的偏好设定（开发成本不计，**多端自动适配**与**体验上限**权重最高）。
+**本期交付（In）**
+1. 后端：签名鉴权、多身份账号 + unionid 合并、`/v1` 契约、预签名直传、SSE 进度、APNs/Live Activity 推送、公开分享 H5。
+2. 小程序：切到 `/v1` + token 鉴权，接入 Harness（`data-ui` 锚点 + Fixture 模式）。
+3. 全站原型 + Harness MVP（golden / capture / diff / report）。
+4. iOS App：与小程序功能对齐 + Live Activity + App Intents + 微信分享，TestFlight → 上架。
 
-| 方案 | 多端自动适配 (×3) | iOS 体验上限 (×3) | AI 生成质量 (×2) | 小程序复用 (×1) | 演进风险 (×1) | 加权 |
-|---|---|---|---|---|---|---|
-| A. 独立仓库、完全隔离 | 1 | 5 | 4 | 1 | 3 | 31 |
-| **B. 同仓 · 原生 SwiftUI · 共享意图层 + Harness** | **5** | **5** | **5** | 3 | 4 | **52** |
-| C. Taro 多端（weapp + Taro RN） | 3 | 2 | 2 | 5 | 2 | 30 |
-| D. React Native / Expo（iOS/Android/Web）+ 小程序 Taro | 3 | 3 | 4 | 2 | 3 | 37 |
-| E. Flutter + 小程序 Taro | 3 | 3 | 3 | 1 | 3 | 33 |
-| F. KMP（共享逻辑）+ SwiftUI + Taro | 4 | 5 | 3 | 1 | 3 | 42 |
-| G. uni-app x / 跨小程序框架一套出 App | 3 | 2 | 2 | 4 | 2 | 29 |
-
-关键判断：
-
-1. **「一份代码」解决不了小程序**。小程序端注定是 Taro/原生小程序，所以任何 App 侧的跨端框架都只是把「2 套 UI」变成「2 套 UI + 1 个桥」。真正的「一份」只能在 UI 之上的意图层实现。
-2. **AI native 开发下，原生代码反而最好生成**：SwiftUI / Swift Concurrency 语料丰富、编译器严格、Xcode 预览与 XCUITest 可脚本化，非常适合「生成 → 编译 → 截图 → 比对 → 回修」的闭环；Taro-RN 的音频/后台能力语料少、坑多。
-3. **KMP（F）不划算**：本项目业务逻辑很薄（真正的逻辑在后端），共享 Kotlin 逻辑层收益小，却引入第三种语言。用「OpenAPI 生成 + 状态机 JSON 生成」即可得到相同的一致性。
-4. **B 的「适配」不靠运行时，而靠流水线**：一致性由 Harness 在开发期强制，而不是靠跨端 runtime 在运行期抹平——这正是 AI native 的优势所在。
+**不做（Out）**：Android、IAP/会员、多语言（结构预留 en）、浅色主题（Token 预留）。
 
 ---
 
-## 4. 目标架构
-
-### 4.1 分层
+## 2. 架构总览
 
 ```mermaid
 flowchart TB
-  subgraph L0["L0 · 产品意图（唯一真相）"]
-    FC["specs/features/&lt;id&gt;/\nspec.md · flow.json · copy.json\nfixtures/ · prototype.html · acceptance.yaml"]
+  subgraph Intent["意图层（唯一真相）"]
+    PROTO["design/prototype\n全站大原型（按 screen 拆源文件，构建为单文件 HTML）"]
+    CAP["specs/features/&lt;id&gt;\n功能胶囊：spec · flow · contract · acceptance\n引用 prototype 的 screen/state"]
+    FIX["specs/fixtures\n共享测试数据"]
   end
-  subgraph L1["L1 · 契约与基础"]
-    OAS["packages/contract\nzod → OpenAPI 3.1"]
-    TOK["packages/design-tokens\nDTCG tokens.json"]
-    STR["packages/i18n\nstrings + 错误码"]
+  subgraph Base["契约与基础包"]
+    CON["packages/contract\nzod → openapi.yaml → TS/Swift client"]
+    TOK["packages/design-tokens\n→ CSS / SCSS / Swift"]
+    I18N["packages/i18n\n文案 + 错误码"]
   end
-  subgraph L2["L2 · 生成物（不手改）"]
-    TSC["TS client + types"]
-    SWC["Swift client（swift-openapi-generator）"]
-    SCSS["SCSS / CSS vars"]
-    SWT["Swift Tokens / xcstrings / Flow enums"]
+  subgraph Clients["端"]
+    MP["apps/mp-weixin"]
+    IOS["apps/ios"]
+    WS["apps/web-share"]
   end
-  subgraph L3["L3 · 端实现"]
-    MP["apps/mp-weixin (Taro)"]
-    IOS["apps/ios (SwiftUI)"]
-    WEB["apps/web-share (H5 落地页)"]
-    AND["apps/android (Compose, 预留)"]
-  end
-  subgraph L4["L4 · 服务"]
+  subgraph Svc["服务"]
     API["apps/api"] --> WK["apps/worker"]
   end
-  FC --> OAS & TOK & STR
-  OAS --> TSC & SWC
-  TOK --> SCSS & SWT
-  STR --> SWT & TSC
-  TSC --> MP & WEB
-  SWC --> IOS
-  SCSS --> MP & WEB
-  OAS -. 校验 .-> API
-  H["tools/harness\n派发 · 截图 · 比对 · Parity 报告"] -. 驱动 .-> MP & IOS & API
-  FC -. Golden .-> H
+  CAP --> PROTO
+  FIX --> PROTO & MP & IOS
+  TOK --> PROTO & MP & IOS & WS
+  I18N --> PROTO & MP & IOS
+  CON --> MP & IOS & WS & API
+  H["tools/harness"] -. golden .-> PROTO
+  H -. capture/diff .-> MP & IOS
 ```
 
-### 4.2 目标目录
+目标目录（新增项标 `+`）：
 
 ```
 demo2song/
 ├─ apps/
-│  ├─ api/                 # + /v1、JWT、身份提供方、预签名上传、SSE、APNs
-│  ├─ worker/              # + Notifier 抽象（wechat / apns / live-activity）
-│  ├─ mp-weixin/           # 改为消费 @demo2song/contract-client 与 tokens
-│  ├─ web-share/           # 新：公开试听 H5（Universal Link 落地 + 唤起小程序/App）
-│  └─ ios/                 # 新：SwiftUI App（见 §6）
+│  ├─ api/ worker/ mp-weixin/
+│  ├─ + web-share/                 # 公开试听 H5 + apple-app-site-association
+│  └─ + ios/                       # SwiftUI App
 ├─ packages/
-│  ├─ shared/              # 保留 provider contract（服务端内部）
-│  ├─ contract/            # 新：zod schemas → openapi.yaml + TS client
-│  ├─ design-tokens/       # 新：tokens.json → scss / css / swift / (kotlin)
-│  ├─ i18n/                # 新：copy 与错误码字典 → ts / xcstrings
-│  ├─ config/  data/       # 不变
-├─ specs/
-│  ├─ features/<id>/       # Feature Capsule（见 §7.2）
-│  ├─ fixtures/            # 全局 Fixture（用户、歌曲、任务各状态）
-│  ├─ golden/              # 由 prototype.html 渲染出的基准截图（git-lfs）
-│  ├─ platform-adapters.md # 意图 → 各端原生实现的映射表
-│  └─ parity.yaml          # 功能 × 端 的对齐矩阵
-├─ tools/harness/          # 多端 Harness CLI（见 §7）
-└─ docs/architecture/      # 本文档
+│  ├─ shared/ config/ data/
+│  ├─ + contract/                  # zod schemas → openapi.yaml + TS client
+│  ├─ + design-tokens/
+│  └─ + i18n/
+├─ + design/prototype/             # 全站大原型（§4）
+├─ + specs/
+│  ├─ features/<id>/               # 功能胶囊（§5）
+│  ├─ fixtures/                    # 共享 Fixture
+│  ├─ golden/                      # 原型渲染基准截图（git-lfs）
+│  ├─ platform-adapters.md
+│  └─ parity.yaml
+└─ + tools/harness/                # Harness CLI（§6）
 ```
 
 ---
 
-## 5. 后端改造 Spec（iOS 前置条件）
+## 3. 账号与鉴权 Spec（unionid 方案）
 
-### 5.1 身份与账号
+### 3.1 外部前置（E 负责，§9 有时间点）
 
-**目标**：签名 token 取代 `x-user-id`；一个「人」可绑定多个身份。
+1. 注册**微信开放平台**开发者账号并完成开发者资质认证（与小程序**同一主体**）。
+2. 开放平台 →「管理中心 → 小程序」绑定现有小程序。绑定后 `jscode2session` 会返回 `unionid`。
+3. 开放平台创建**移动应用**（iOS）：需填 Bundle ID 与 Universal Link（依赖 X2、X4），审核通过后获得 `WECHAT_OPEN_APP_ID / SECRET`。
+4. Apple Developer：Bundle ID 开启 Sign in with Apple、Push Notifications、Associated Domains；生成 APNs Auth Key（.p8）和 Sign in with Apple Key（.p8，用于注销时 revoke）。
 
-数据模型（`packages/data`）：
+### 3.2 数据模型（`packages/data/src/types.ts`）
 
 ```ts
-interface UserRecord extends BaseRecord {
+export type IdentityProvider = "wechat_mp" | "wechat_app" | "apple";
+
+export interface UserRecord extends BaseRecord {
+  openId?: string;            // 兼容字段：只读，迁移完成后删除
+  sessionKey?: string;        // 兼容字段
   displayName?: string;
-  // openId 字段迁移到 identities，保留只读兼容一个版本
+  mergedInto?: string;        // 被合并后指向存活用户
+  deletedAt?: string;
 }
-interface IdentityRecord extends BaseRecord {
+
+export interface IdentityRecord extends BaseRecord {
   userId: string;
-  provider: "wechat_mp" | "wechat_app" | "apple" | "phone";
-  subject: string;        // mp/app openid、apple sub、手机号哈希
-  unionId?: string;       // 微信开放平台 unionid —— 打通小程序与 App 的关键
-  rawMeta?: Record<string, unknown>;
+  provider: IdentityProvider;
+  subject: string;            // mp openid / app openid / apple sub；(provider, subject) 唯一
+  unionId?: string;           // 仅微信两类身份有
+  meta?: Record<string, unknown>;  // apple: email(私密中继)、refreshToken(加密存储)
 }
-interface SessionRecord extends BaseRecord {
-  userId: string; refreshTokenHash: string; client: "mp" | "ios" | "web"; expiresAt: string;
+
+export interface SessionRecord extends BaseRecord {
+  userId: string;
+  client: "mp" | "ios" | "web";
+  refreshTokenHash: string;   // sha256
+  expiresAt: string;
+  revokedAt?: string;
+  replacedBy?: string;        // refresh 轮换链，检测重放
+}
+
+export interface MergeLogRecord extends BaseRecord {
+  survivorUserId: string;
+  absorbedUserId: string;
+  status: "pending" | "done" | "failed";
+  movedCounts?: Record<string, number>;
+  error?: string;
 }
 ```
 
-接口：
+新增集合：`identities`、`sessions`、`merge_logs`（加入 `packages/data/scripts/init-cloudbase.ts`）。
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/v1/auth/wechat-mp` | `{code}` → jscode2session → 按 unionid/openid 合并用户 |
-| POST | `/v1/auth/wechat-app` | `{code}` → 开放平台 `sns/oauth2/access_token` → unionid 合并 |
-| POST | `/v1/auth/apple` | `{identityToken, authorizationCode}` → 校验 Apple JWKS |
-| POST | `/v1/auth/refresh` | refresh → 新 access token |
-| POST | `/v1/me/identities` | 已登录状态下绑定新身份（Apple 用户补绑微信以找回小程序作品） |
-| DELETE | `/v1/me` | 账号注销（App Store 5.1.1(v) 必需） |
-
-Token：access JWT 15 分钟（`sub=userId`, `cli=ios|mp`），refresh 30 天、可吊销。过渡期：`x-user-id` 仅在 `LEGACY_HEADER_AUTH=true` 且来自小程序旧版本时接受，小程序发版后关闭。
-
-**合并规则**：同 unionid → 同 user；Apple 登录产生的新 user 在绑定微信后，若微信侧已有 user，则迁移 Apple user 的作品到旧 user 并合并（需二次确认 UI）。
-
-> 前置：小程序与 iOS App 需绑定到**同一个微信开放平台账号**才能拿到一致的 unionid。
-
-### 5.2 上传
-
-```
-POST /v1/recordings/upload-url  {mimeType, durationSeconds, byteSize} → {recordingId, putUrl, headers, expiresAt}
-PUT  <putUrl>  (客户端直传 COS)
-POST /v1/recordings/{id}/complete → Recording
-```
-
-- iOS 录 AAC/m4a 44.1kHz 128kbps；worker 已有 `normalizeReferenceAudioToMp3`（ffmpeg），只需放开 m4a。
-- 小程序可继续走旧的 multipart，逐步迁移。
-
-### 5.3 任务进度：轮询 → 推送
-
-- `GET /v1/jobs/{id}/events`（SSE）：前台实时进度（`queued → running(stage, etaSeconds) → succeeded|failed`）。
-- `Notifier` 抽象（worker）：
+`Demo2SongRepository` 新增方法：
 
 ```ts
-interface Notifier { channel: "wechat_subscribe" | "apns" | "apns_live_activity";
-  notify(job: SongJobRecord, song: SongRecord): Promise<void>; }
+findIdentity(provider: IdentityProvider, subject: string): Promise<IdentityRecord | null>;
+findIdentityByUnionId(unionId: string): Promise<IdentityRecord | null>;
+listIdentitiesForUser(userId: string): Promise<IdentityRecord[]>;
+createIdentity(input: Omit<IdentityRecord, keyof BaseRecord>): Promise<IdentityRecord>;
+updateIdentity(id: string, patch: Partial<IdentityRecord>): Promise<void>;
+createUser(input?: Partial<UserRecord>): Promise<UserRecord>;
+updateUser(id: string, patch: Partial<UserRecord>): Promise<void>;
+createSession(input: Omit<SessionRecord, keyof BaseRecord>): Promise<SessionRecord>;
+findSessionByHash(hash: string): Promise<SessionRecord | null>;
+updateSession(id: string, patch: Partial<SessionRecord>): Promise<void>;
+revokeSessionsForUser(userId: string): Promise<void>;
+reassignUserData(fromUserId: string, toUserId: string): Promise<Record<string, number>>; // recordings/songs/song_jobs/usage_quotas
+countActiveJobsForUser(userId: string): Promise<number>;
+createMergeLog(...)/updateMergeLog(...)
 ```
 
-- `POST /v1/jobs/{id}/subscriptions` `{channel, token}` 取代 `/jobs/:id/notification`（mp 传 `wechat_subscribe`，iOS 传 APNs device token 或 Live Activity push token）。
-- 轮询保留为降级。
+> COS 对象 key 中含旧 userId（`recordings/{userId}/...`），**合并时不搬对象**，key 视为不透明字符串。
 
-### 5.4 其他
+### 3.3 Token
 
-- **版本化**：所有路由迁移到 `/v1`，旧路由保持一个小程序版本周期。
-- **错误码标准化**：统一 `{ error: { code: "DAILY_DEMO_QUOTA_EXHAUSTED", params: {...} } }`，文案只在 `packages/i18n` 中，两端同源。
-- **选项下发**：风格/情绪/语言/性别选项从 `constants.ts` 上移到 `/v1/config/public`（运营可改，无需发版）。
-- **`GET /v1/songs` 去 N+1**：repository 增加 `listSongsWithChildrenStats(userId)` 一次聚合。
-- **分享**：`apps/web-share` 提供 `https://s.<domain>/p/{songId}` H5 试听页；托管 `apple-app-site-association` 支持 Universal Link；页面在微信内可通过开放标签唤起小程序。
-- **内容合规元数据**：生成结果写入 AI 生成标识（见 §10）。
+- 库：`jose`。算法 HS256，密钥 `JWT_SECRET`（≥32 字节，进 `.env` 与云托管环境变量）。
+- Access：15 分钟，claims `{ sub: userId, cli: "mp"|"ios"|"web", sid: sessionId }`。
+- Refresh：随机 32 字节 base64url，30 天，**每次刷新轮换**；旧 refresh 再次使用 → 吊销整条会话链（重放检测）。
+- `apps/api/src/auth/require-user.ts`：Fastify `preHandler`，解析 `Authorization: Bearer`，校验 session 未吊销、user 未 `mergedInto`/`deletedAt`，挂 `request.userId`。
+- 过渡开关 `LEGACY_HEADER_AUTH`（默认 `true`）：为 `true` 时**仅旧路由**（非 `/v1`）接受 `x-user-id`。`/v1` 永远只认 Bearer。
 
----
+### 3.4 接口
 
-## 6. iOS App Spec
-
-### 6.1 技术栈
-
-| 维度 | 选择 | 理由 |
-|---|---|---|
-| 最低系统 | iOS 17 | Observation 框架、`ShareLink`、Live Activity 交互按钮 |
-| UI | SwiftUI，少量 UIKit 桥接 | 声明式与 HTML 原型结构可一一映射，利于 AI 比对 |
-| 语言 | Swift 6 严格并发 | 编译期抓 AI 生成代码的数据竞争 |
-| 网络 | `swift-openapi-generator` + URLSession transport | 契约生成，零手写模型 |
-| 录音 | `AVAudioEngine`（实时电平/音高）+ `AVAudioFile` 写 AAC | 需要实时可视化反馈 |
-| 播放 | `AVPlayer` + `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` | 锁屏/耳机/车机控制 |
-| 后台 | `UIBackgroundModes: audio, remote-notification` | 后台播放、静默推送 |
-| 等待体验 | ActivityKit Live Activity + 灵动岛 | 见 §8 |
-| 快捷入口 | App Intents（「用随哼录一段」）、Control Center 控件、锁屏 Widget | 灵感捕捉 ≤ 1 步 |
-| 登录 | Sign in with Apple + 微信 OpenSDK | 4.8 条款要求 |
-| 分享 | `ShareLink` + 微信 SDK `WXMiniProgramObject`（分享成小程序卡片） | 微信内分享直接进小程序 |
-| 测试 | Swift Testing + XCUITest + swift-snapshot-testing | 截图闭环 |
-| 工程 | XcodeGen / Tuist 生成 `.xcodeproj`（不提交工程文件） | 避免 AI 改 pbxproj 冲突 |
-
-### 6.2 模块（SPM）
-
-```
-apps/ios/
-├─ project.yml                 # XcodeGen
-├─ App/                        # @main、路由、依赖注入
-├─ Packages/
-│  ├─ D2SContract/             # 生成：OpenAPI client（勿手改）
-│  ├─ D2SDesign/               # 生成：Tokens（Color/Font/Spacing/Radius/Motion）+ 手写基础组件
-│  ├─ D2SStrings/              # 生成：Localizable.xcstrings + 错误码映射
-│  ├─ D2SFlows/                # 生成：flow.json → Swift enum 状态机
-│  ├─ D2SCore/                 # Auth、APIClient 封装、Fixture/Mock 注入、持久化
-│  ├─ D2SAudio/                # Recorder / Player / NowPlaying
-│  └─ Features/
-│     ├─ Record/  Compose/  Generation/  Song/  Library/  FullSong/  Account/  Consent/
-├─ Extensions/
-│  ├─ GenerationActivity/      # Live Activity + 灵动岛
-│  ├─ Widgets/                 # 锁屏/桌面「哼一段」
-│  └─ Intents/                 # App Intents
-└─ UITests/                    # 由 acceptance.yaml 生成的 XCUITest
-```
-
-### 6.3 页面映射（与小程序同构，ID 一致）
-
-| Screen ID | 小程序 | iOS | 说明 |
+| 方法 | 路径 | Body | 返回 |
 |---|---|---|---|
-| `record` | `pages/index` (screen=record) | `RecordView` | 按住录音 / 点按锁定 |
-| `compose` | `pages/index` (screen=details) + `SongInfoForm` | `ComposeView` | 风格/情绪/语言/性别/歌词片段 |
-| `generation` | `pages/generation` | `GenerationView` + Live Activity | |
-| `song` | `pages/song` | `SongView` | demo/full 通用 |
-| `full-compose` | `pages/full` | `FullComposeView` | 歌词草稿生成 + 编辑 |
-| `library` | `pages/library` | `LibraryView` | |
-| `share-landing` | `pages/play` | `apps/web-share` | App 内不需要，走 Universal Link 直接进 `song` |
-| `consent-voiceprint` | `pages/voiceprint-agreement` | `ConsentSheet` | |
-| `account` | — | `AccountView` | 新：登录方式、绑定、注销 |
+| POST | `/v1/auth/wechat-mp` | `{code}` | `AuthResult` |
+| POST | `/v1/auth/wechat-app` | `{code}` | `AuthResult` |
+| POST | `/v1/auth/apple` | `{identityToken, authorizationCode, fullName?}` | `AuthResult` |
+| POST | `/v1/auth/refresh` | `{refreshToken}` | `AuthResult` |
+| POST | `/v1/auth/logout` | — | `204` |
+| GET  | `/v1/me` | — | `Me` |
+| POST | `/v1/me/identities` | `{provider:"wechat_app"\|"apple", code \| identityToken...}` | `Me` 或 `409 MERGE_REQUIRED` |
+| POST | `/v1/me/merge` | `{mergeToken}` | `AuthResult`（新 token，属于存活用户） |
+| DELETE | `/v1/me` | — | `204` |
 
-所有可交互元素统一使用 `ui-id`（小程序 `data-ui`、iOS `accessibilityIdentifier`、HTML `data-ui`），这是 Harness 做结构比对的锚点。
+```ts
+interface AuthResult { accessToken: string; refreshToken: string; expiresIn: number; user: Me; }
+interface Me { id: string; displayName?: string; identities: Array<{ provider: IdentityProvider; linkedAt: string }>; }
+interface MergeRequired { error: { code: "MERGE_REQUIRED"; params: {
+  mergeToken: string;            // 10 分钟有效 JWT：{absorbed, survivor, provider, subject, unionId}
+  target: { songCount: number; recordingCount: number; lastActiveAt: string };
+  current: { songCount: number; recordingCount: number };
+}}}
+```
+
+### 3.5 登录解析算法（`apps/api/src/auth/resolve-user.ts`）
+
+```
+resolveWechat(provider, openid, unionid?):
+  1. idt = findIdentity(provider, openid)
+     → 命中：若 idt.unionId 为空且 unionid 有值则补写；return idt.userId
+  2. 若 unionid：u = findIdentityByUnionId(unionid)
+     → 命中：createIdentity(provider, openid, unionid, userId=u.userId)；return u.userId
+  3. 仅 wechat_mp：legacy = users.where(openId == openid)        # 未迁移的老用户
+     → 命中：createIdentity(wechat_mp, openid, unionid, legacy.id)；return legacy.id
+  4. user = createUser()；createIdentity(...)；return user.id
+
+resolveApple(sub):
+  idt = findIdentity("apple", sub) → 命中 return；否则新建 user + identity
+```
+
+### 3.6 绑定与合并
+
+- 场景 A：Apple 用户绑定微信 → 后端换 `unionid`：
+  - unionid 无归属 → 直接给当前用户加身份；
+  - unionid 已属于用户 S（通常是小程序老用户）→ 返回 `409 MERGE_REQUIRED`，**存活方 = S**（有小程序历史），被合并方 = 当前 Apple 用户 A。
+- 场景 B：微信登录的用户绑定 Apple，Apple sub 已属于另一用户 → 同样走合并，存活方 = 当前微信用户。
+- `POST /v1/me/merge`（幂等，可重入）：
+  1. 校验 mergeToken；`countActiveJobsForUser(absorbed) > 0` → `409 JOB_IN_PROGRESS`；
+  2. `createMergeLog(pending)`；
+  3. `reassignUserData(absorbed → survivor)`：recordings、songs、song_jobs 改 `userId`；usage_quotas 按 `(dateKey, kind)` 累加 `used` 后删除旧行；
+  4. absorbed 的全部 identities 改 `userId = survivor`，再加上本次绑定的身份；
+  5. `revokeSessionsForUser(absorbed)`；`updateUser(absorbed, { mergedInto: survivor })`；
+  6. mergeLog → `done`；为 survivor 签发新的 `AuthResult`。
+  - 任一步失败：mergeLog → `failed`，重试从头再跑（每一步都可重复执行）。
+- 客户端 UI：合并确认 sheet，展示「将把当前账号的 N 首歌并入微信账号（M 首歌）」，二次确认后才调用 merge。
+
+### 3.7 老用户迁移
+
+- 一次性脚本 `packages/data/scripts/migrate-identities.ts`：为每个 `users.openId` 建 `wechat_mp` identity（无 unionId），支持 dry-run、可重入。
+- unionid 懒回填：老用户下次通过 `/v1/auth/wechat-mp` 登录时，按 §3.5 第 1 步补写。
+- 未打开过新版小程序的老用户没有 unionid → 在 iOS 用微信登录时会新建账号。**缓解**：iOS 登录页文案提示「已在小程序创作过？请先打开一次最新版小程序」；同时 `/v1/me/identities` 支持后续合并，数据不会丢。
+
+### 3.8 注销（`DELETE /v1/me`）
+
+软删除：`deletedAt`、吊销会话、删除 identities（释放 unionid）；Apple 身份调用 `https://appleid.apple.com/auth/revoke`；作品与录音 30 天后由 worker 定时任务清理 COS 与记录。
 
 ---
 
-## 7. 多端自动适配 Harness Spec（核心）
+## 4. 全站大原型 Spec（`design/prototype`）
 
-### 7.1 原则
+### 4.1 原则
 
-1. **意图写一次，实现写 N 次，验证自动化**：AI 擅长「按清晰规范写代码」，不擅长「凭空保持一致」。一致性由规范 + 机器比对保证。
-2. **HTML 原型是 UI 唯一真相**：设计评审只看 HTML；端实现只需对齐它。
-3. **差异必须显式声明**：允许的平台差异写进胶囊的 `divergence`，未声明的差异即缺陷。
-4. **同一份 Fixture 驱动所有渲染**：原型、iOS Preview、小程序、截图测试吃同一个 JSON，才能逐像素可比。
+- 对人：**一个文件看全产品**——`dist/prototype.html` 双击打开，左侧站点地图，中间设备框，右侧状态/Fixture 面板。
+- 对 AI：**按 screen 拆源文件**，降低并发修改冲突；构建脚本把它们内联成单文件。
+- 所有端只对齐原型，原型只使用 Token 与 i18n 文案。
 
-### 7.2 Feature Capsule 规范
+### 4.2 目录
 
 ```
-specs/features/full-song-lyrics-draft/
-├─ feature.yaml        # 元信息
-├─ spec.md             # 用户故事、规则、边界
-├─ flow.json           # 状态机（生成 TS + Swift）
-├─ copy.json           # 文案 key → zh-Hans（en 预留）
-├─ contract.yaml       # OpenAPI 片段（新增/修改的 path 与 schema）
-├─ fixtures/           # 每个状态的数据
-│  ├─ idle.json  drafting.json  draft-ready.json  error-quota.json  long-lyrics.json
-├─ prototype.html      # 黄金原型（单文件，可切状态）
-└─ acceptance.yaml     # 验收场景
+design/prototype/
+├─ screens.yaml              # 站点地图 / screen 注册表（唯一）
+├─ src/
+│  ├─ shell.html             # 外壳：站点地图、设备框、状态面板、路由出口
+│  ├─ runtime.js             # 路由、fixture 注入、data-copy 绑定、intent 桩、capture 模式
+│  ├─ components.css         # 共享组件：.btn .chip .card .sheet .toast .player .skeleton …
+│  ├─ components.js          # 共享组件行为（波形、播放器进度、sheet 手势）
+│  └─ screens/
+│     ├─ record.html          ├─ compose.html          ├─ generating.html
+│     ├─ demo-result.html     ├─ song.html             ├─ full-compose.html
+│     ├─ library.html         ├─ share-landing.html    ├─ consent-voiceprint.html
+│     ├─ login.html           └─ account.html
+├─ build.mjs                 # 内联 tokens.css(生成) + copy(生成) + fixtures + 全部 screens → dist/prototype.html
+└─ dist/prototype.html       # 提交到仓库；CI 校验与源码一致
 ```
 
-`feature.yaml`：
+### 4.3 `screens.yaml`
 
 ```yaml
+screens:
+  - id: record
+    title: 哼唱录音
+    states: [idle, permission-denied, recording, too-short, recorded]
+    default-fixture: user-new
+    platforms:
+      mp-weixin: { page: pages/index/index, query: { screen: record } }
+      ios: { view: RecordView }
+  - id: compose
+    title: 补充信息
+    states: [empty, filled, long-text, uploading, submitting, error-quota, error-network]
+    platforms:
+      mp-weixin: { page: pages/index/index, query: { screen: details } }
+      ios: { view: ComposeView }
+  - id: full-compose
+    title: 生成完整版
+    states: [idle, drafting, draft-ready, submitting, error-quota, error-network]
+    platforms:
+      mp-weixin: { page: pages/full/index }
+      ios: { view: FullComposeView }
+  - id: login
+    title: 登录
+    states: [idle, signing-in, error, merge-required]
+    platforms:
+      mp-weixin: n/a                       # 小程序静默登录
+      ios: { view: LoginView }
+  # … generating / demo-result / song / library / share-landing / consent-voiceprint / account
+```
+
+Harness、端 agent、Parity 报告都从这里读 screen ↔ 页面映射。
+
+### 4.4 Screen 文件约定
+
+```html
+<!-- design/prototype/src/screens/full-compose.html -->
+<template data-screen="full-compose">
+  <header class="nav" data-ui="full-compose.nav"> … </header>
+  <section data-when="idle drafting draft-ready submitting">
+    <h1 data-ui="full-compose.title" data-bind="draft.title" data-copy="fullCompose.titlePlaceholder"></h1>
+    <div class="skeleton" data-ui="full-compose.skeleton" data-when="drafting"></div>
+    <textarea data-ui="full-compose.lyrics" data-bind="draft.lyrics"></textarea>
+    <button class="btn primary" data-ui="full-compose.submit" data-intent="submit"
+            data-copy="fullCompose.submit"></button>
+  </section>
+  <div class="sheet" data-when="error-quota" data-ui="full-compose.quota-sheet">
+    <p data-copy="errors.DAILY_FULL_QUOTA_EXHAUSTED"></p>
+  </div>
+</template>
+<script type="module">
+  Proto.screen("full-compose", {
+    on: { "full-compose.submit": ({ go }) => go("generating", { state: "queued" }) }
+  });
+</script>
+```
+
+- `data-ui`：`<screen>.<element>`，同一 screen 内唯一；**各端必须使用同一 ID**（小程序 `data-ui`，iOS `accessibilityIdentifier`）。
+- `data-when`：在哪些 state 下可见；`data-bind`：从 fixture 取值；`data-copy`：i18n key。
+- `data-intent`：意图（share / save-file / notify-when-done / hold-to-record / submit / back…），对应 `specs/platform-adapters.md`。
+- 禁止裸色值、裸字号、裸间距（lint：只允许 `var(--d2s-*)`）。
+
+### 4.5 URL 协议
+
+```
+dist/prototype.html#/full-compose?state=draft-ready&fixture=long-lyrics&device=iphone-15&capture=1
+```
+
+`device`：`iphone-15`（390×844）、`iphone-se`（375×667）、`mp-750`（375×812，小程序胶囊导航）；`capture=1` 隐藏外壳只渲染设备内容，供截图。
+
+### 4.6 防冲突规则
+
+1. 一个 screen 一个文件；胶囊只改它声明的 screens。
+2. 修改 `components.css/js`、`runtime.js`、`screens.yaml` 必须在胶囊 `feature.yaml` 的 `prototype.shared-changes` 中声明，Harness 会对受影响的**所有** screen 重跑 golden。
+3. `dist/prototype.html` 只由 `build.mjs` 生成，冲突时直接重新构建。
+
+---
+
+## 5. Feature Capsule Spec（引用式）
+
+```
+specs/features/<id>/
+├─ feature.yaml
+├─ spec.md            # 用户故事、规则、边界、心理学依据
+├─ flow.json          # 状态机（生成 TS 与 Swift）
+├─ contract.yaml      # OpenAPI 片段（可空）
+├─ copy.json          # 新增/修改的文案 key（合入 packages/i18n）
+├─ fixtures/          # 新增 fixture（合入 specs/fixtures）
+└─ acceptance.yaml    # 验收场景
+```
+
+```yaml
+# feature.yaml
 id: full-song-lyrics-draft
 title: 完整版歌词草稿
-owner: E
-platforms: [mp-weixin, ios]          # 需要适配的端
-screens: [full-compose]
-states: [idle, drafting, draft-ready, submitting, error-quota, error-network]
+platforms: [api, mp-weixin, ios]
+prototype:
+  screens:
+    full-compose: [idle, drafting, draft-ready, submitting, error-quota, error-network]
+  shared-changes: []                 # 例如 [components.css#.sheet]
 contract: contract.yaml
-flags: { server: features.enableFullSong }
-divergence:                          # 显式允许的差异
+flags: { server: features.enableExtendSong }
+divergence:
   - platform: ios
     ui-id: full-compose.submit
-    reason: 使用系统 .borderedProminent 按钮高度 50pt（原型 48px）
+    reason: 系统 borderedProminent 按钮 50pt
     visual-tolerance: 0.04
   - platform: mp-weixin
     ui-id: full-compose.nav
-    reason: 小程序原生导航栏，不渲染自绘标题
+    reason: 小程序原生导航栏
+    skip: [visual]
 ```
 
-`flow.json`（简化 XState 子集，生成器只支持 `states / on / entry / invoke`，保证 TS 与 Swift 都能确定性生成）：
+`flow.json` 只支持 `states / on / invoke / initial`，`#<screen>` 表示跳转。`acceptance.yaml` 的 step 词汇表：`tap / type / expect{state,screen,visible,hidden,text,copy} / mock / wait`。
 
-```json
-{
-  "id": "fullCompose",
-  "initial": "idle",
-  "states": {
-    "idle":        { "on": { "REQUEST_DRAFT": "drafting", "SUBMIT": "submitting" } },
-    "drafting":    { "invoke": "POST /v1/songs/{id}/full-draft",
-                     "on": { "DONE": "draft-ready", "ERROR": "error-network" } },
-    "draft-ready": { "on": { "EDIT": "draft-ready", "SUBMIT": "submitting", "REQUEST_DRAFT": "drafting" } },
-    "submitting":  { "invoke": "POST /v1/songs/{id}/full-jobs",
-                     "on": { "DONE": "#generation", "QUOTA": "error-quota", "ERROR": "error-network" } },
-    "error-quota": { "on": { "DISMISS": "draft-ready" } },
-    "error-network": { "on": { "RETRY": "idle" } }
-  }
-}
+---
+
+## 6. Harness Spec（`tools/harness`）
+
+Node 20 + TS，入口 `yarn harness <cmd>`。
+
+| 命令 | 作用 | 产物 |
+|---|---|---|
+| `feature new "<需求>"` | 生成胶囊骨架，写 `feature.yaml/spec.md`，并在原型新增/修改 screen 源文件（由 agent 完成内容） | `specs/features/<id>/` |
+| `codegen` | contract → openapi.yaml → TS client / Swift client；tokens → css/scss/swift；i18n → ts/xcstrings；flow → ts/swift | 各 `generated/` 目录 |
+| `proto build` | 构建 `dist/prototype.html` | |
+| `golden [--feature id]` | Playwright 渲染 screen×state×device | `specs/golden/<screen>/<state>@<device>.png` + `.tree.json` |
+| `capture --platform mp\|ios [--feature id]` | 用同一 fixture 截各端图并导出 ui 节点树 | `.harness/captures/<platform>/…` |
+| `diff [--feature id]` | 结构 → 文案 → 视觉三层比对；视觉低于阈值调用 AI 评审 | `.harness/diff/*.json` |
+| `report` | 汇总 parity，更新 `specs/parity.yaml` | `.harness/report/parity.html` |
+| `verify --feature id` | codegen + build + test + acceptance + capture + diff（CI 入口） | 退出码 |
+
+比对规则：
+1. **结构**（硬）：golden 中可见的 `data-ui` 集合与相对顺序 = 端节点树（去除 `divergence.skip`）。
+2. **文案**（硬）：`data-copy` 元素文本 = i18n 值。
+3. **视觉**（软）：按 `data-ui` 框对齐后区域 SSIM ≥ 0.92（或胶囊声明的容差）；不达标交给视觉评审 agent，按 rubric（层级 / 8pt 节奏 / Token / 字号级 / 对齐 / 状态完整）输出 `accept | fix + 指令`。
+
+采集方式：
+- 原型：Playwright（Chromium，DPR 3）。
+- 小程序：`miniprogram-automator` 连开发者工具（端口见 `Agent.md`，57488）；页面 query `__fixture=<name>&__state=<state>`，`request.ts` 中 `FixtureTransport` 拦截；构建开关 `TARO_APP_HARNESS=1`（生产构建剔除）。
+- iOS：XCUITest，启动参数 `-harness -screen X -state Y -fixture Z`；`FixtureTransport` 替换网络；关闭动画，固定时钟 `2026-01-01T20:00:00+08:00`；`simctl` 模拟器 iPhone 15 / iPhone SE（3rd）。
+
+---
+
+## 7. 其他后端 Spec（iOS 前置）
+
+### 7.1 `/v1` 与契约
+
+- `packages/contract/src/schemas/*.ts`：迁入 `apps/api/src/routes/songs.ts` 中的 `promptSchema / demoJobSchema / fullJobSchema / fullDraftSchema` 以及 `packages/shared/src/types.ts` 中对外的类型（以 zod 重写，`z.infer` 导出 TS 类型，`shared` 再从 contract 转导出保持兼容）。
+- `@asteasolutions/zod-to-openapi` 生成 `packages/contract/openapi.yaml`；API 用 `fastify-type-provider-zod` 直接校验。
+- 统一错误：`{ error: { code: string; params?: object } }`；HTTP 状态不变。错误码清单进 `packages/i18n/errors.json`。
+- 旧路由保留，内部复用同一 handler，旧路由继续返回旧错误格式。
+
+### 7.2 直传上传
+
+```
+POST /v1/recordings/upload-url   {mimeType: "audio/mp4"|"audio/mpeg"|"audio/wav", byteSize, durationSeconds}
+  → {recordingId, putUrl, headers, expiresAt}       # COS 预签名 PUT，10 分钟，限制 Content-Length ≤ 20MiB
+PUT  putUrl                                          # 客户端直传
+POST /v1/recordings/{id}/complete                    → Recording（服务端 headObject 校验大小与类型）
 ```
 
-`prototype.html` 约定：
+worker 的 `normalizeReferenceAudioToMp3` 需接受 `audio/mp4`（m4a）。
 
-- 只用 `packages/design-tokens` 生成的 CSS 变量（Harness lint：禁止裸色值）；
-- 每个可交互/关键元素带 `data-ui="<screen>.<element>"`；
-- URL 参数切换状态与视口：`?state=draft-ready&fixture=long-lyrics&device=iphone-15`；
-- 内置状态切换器（设计评审用），截图模式 `?capture=1` 时隐藏；
-- 文案通过 `data-copy="<key>"` 引用 `copy.json`，便于比对文案一致性。
+### 7.3 进度推送
 
-`acceptance.yaml`：
+- `GET /v1/jobs/{id}/events`：SSE，事件 `status`（`queued | running | succeeded | failed`，含 `etaSeconds?`、`songId?`、`error?`），15s 心跳；服务端每 2s 读库推送变化（后续可换消息队列）。
+- `POST /v1/jobs/{id}/subscriptions` `{channel: "wechat_subscribe" | "apns" | "apns_live_activity", token?}`，替代 `/jobs/:id/notification`。
+- `SongJobRecord` 新增 `subscriptions: Array<{channel, token?, sentAt?, error?}>`，保留 `notificationAccepted` 一个版本做兼容。
+- worker：`apps/worker/src/notifiers/{index,wechat,apns}.ts`，`Notifier` 接口；APNs 用 HTTP/2 + .p8 token 鉴权（`APNS_KEY_ID / APNS_TEAM_ID / APNS_PRIVATE_KEY / APNS_BUNDLE_ID / APNS_ENV`）。Live Activity：状态变化时推 `event: update`，完成时 `event: end` + `dismissal-date`。
+- 设备注册：`POST /v1/me/devices {apnsToken, env}`，用于非 Live Activity 的完成通知。
 
-```yaml
-scenarios:
-  - id: draft-then-submit
-    fixture: idle
-    steps:
-      - tap: full-compose.request-draft
-      - expect: { state: drafting, visible: [full-compose.skeleton] }
-      - mock: { response: fixtures/draft-ready.json }
-      - expect: { state: draft-ready, text: { full-compose.title: "夏夜的晚风" } }
-      - tap: full-compose.submit
-      - expect: { screen: generation }
-  - id: quota-exhausted
-    fixture: draft-ready
-    mock: { "POST /v1/songs/{id}/full-jobs": { status: 429, body: { error: { code: DAILY_FULL_QUOTA_EXHAUSTED } } } }
-    steps:
-      - tap: full-compose.submit
-      - expect: { state: error-quota, copy: errors.DAILY_FULL_QUOTA_EXHAUSTED }
+### 7.4 其余
+
+- `GET /v1/songs` 去 N+1：repository 新增 `listSongsWithStats(userId)`（一次取 songs + jobs，在内存聚合 `hasReadyFull`、`jobId`）。
+- `/v1/config/public` 新增 `options: { styles, moods, languages, genders }`（从 `apps/mp-weixin/src/constants.ts` 上移到 `demo2song.config.json`）。
+- `apps/web-share`：静态 H5（Vite + 原生 TS 即可），路由 `/p/{songId}` 调 `/v1/public/songs/{id}`；托管 `/.well-known/apple-app-site-association`（`applinks` 匹配 `/p/*`、`/wx/*`，后者为微信 Universal Link）；在微信内显示「打开小程序」开放标签。建议域名 `s.demo2song.eexx.me`（待 E 确认）。
+- AI 生成标识：worker 转存歌曲时写 ID3 `TXXX:AIGC=true`（m4a 写对应 tag），播放页显式展示「AI 生成」。
+
+---
+
+## 8. iOS Spec
+
+### 8.1 工程
+
+```
+apps/ios/
+├─ project.yml                     # XcodeGen；.xcodeproj 不入库
+├─ Config/{Debug,Release}.xcconfig # API_BASE、WECHAT_OPEN_APP_ID、UNIVERSAL_LINK
+├─ App/                            # SuihengApp.swift、AppRouter、DI(Environment)
+├─ Packages/
+│  ├─ D2SContract/   (generated)   # swift-openapi-generator
+│  ├─ D2SDesign/                   # Generated/Tokens.swift + 手写组件 PrimaryButton/Chip/Card/Sheet/Toast/Waveform
+│  ├─ D2SStrings/    (generated)   # Localizable.xcstrings + ErrorCode → 文案
+│  ├─ D2SFlows/      (generated)   # flow.json → enum + reducer
+│  ├─ D2SCore/                     # AuthStore(Keychain)、APIClient(自动刷新/401 重试)、FixtureTransport、SSEClient
+│  ├─ D2SAudio/                    # Recorder(AVAudioEngine→AAC 128k)、Player(AVPlayer+NowPlaying)
+│  └─ D2SFeatures/                 # Login Record Compose Generating DemoResult Song FullCompose Library Account Consent
+├─ Extensions/
+│  ├─ GenerationActivity/          # ActivityKit + 灵动岛
+│  ├─ Widgets/                     # 锁屏/桌面「哼一段」+ iOS 18 Control
+│  └─ (App Intents 放主 target)
+└─ UITests/                        # Harness 采集 + acceptance 生成用例
 ```
 
-生成器：`acceptance.yaml` → XCUITest（iOS）/ miniprogram-automator 脚本（小程序）/ Playwright（原型自检）。
+- 依赖：swift-openapi-generator / runtime / urlsession、swift-snapshot-testing、微信 OpenSDK（SPM 或 xcframework）。
+- 状态管理：`@Observable` ViewModel 持有 `D2SFlows` 生成的状态机；View 只读状态、发事件。
+- 所有 `data-ui` 对应 `.accessibilityIdentifier("full-compose.submit")`，常量由 codegen 从原型提取生成 `UIID.swift`，杜绝拼写漂移。
 
-### 7.3 Harness 流水线
+### 8.2 关键交互（相对小程序的重新定义）
+
+| 原方式 | iOS 新方式 | 依据 |
+|---|---|---|
+| 停在生成页 2.5s 轮询 | 提交后可离开；Live Activity / 灵动岛显示「排队 → 编曲中（ETA）→ 完成，点按试听」；前台用 SSE | 预期管理、蔡格尼克效应、峰终定律 |
+| 打开 App 才能录 | App Intent「用随哼录一段」、锁屏 Widget、Control、Action Button 直达 `record.recording`；录完存为草稿，补充信息可稍后 | 渐进式披露；灵感窗口短，缩短入口路径 |
+| 按住录音（松手即停） | 按住录音 + 上滑锁定免按；实时电平/音高线 | 即时反馈、降低持续按压负担（费茨定律之外的操作成本） |
+| 分享为小程序卡片 | 系统 ShareLink（H5 链接）+ 微信内直接分享为小程序卡片 | 默认值效应：收件人在微信内零跳转 |
+
+以上差异在对应胶囊 `divergence` 中声明；小程序保持原交互。
+
+---
+
+## 9. 开发任务清单
+
+> 编号 = 建议的子 issue。**依赖** 列出必须先完成的任务。每个任务都要满足 §10 的通用 DoD。
+> 角色：`BE` 后端 · `MP` 小程序 · `PX` 原型/设计工程 · `HX` Harness · `IOS` iOS · `E` 需要你本人操作。
+
+### 9.0 外部前置（E）
+
+| ID | 事项 | 最晚需要的时间点 |
+|---|---|---|
+| X1 | 开放平台账号认证 + 绑定小程序（§3.1-1/2） | M2 上线前（否则 unionid 拿不到） |
+| X2 | Apple Developer 账号；确定 Bundle ID；开启 SIWA / Push / Associated Domains | M5 开始前 |
+| X3 | APNs .p8、SIWA .p8；写入云托管环境变量 | M4-T4.4 / M2-T2.8 |
+| X4 | Universal Link 域名（建议 `s.demo2song.eexx.me`）解析到 web-share | M4-T4.6 |
+| X5 | 开放平台创建 iOS 移动应用（依赖 X2、X4） | M5-T5.4 |
+| X6 | App 备案（ICP）、生成式 AI 合规材料、隐私政策更新 | M6 前 |
+
+### 9.1 M1 · 契约与基础包
+
+| ID | 角色 | 依赖 | 内容 | 验收 |
+|---|---|---|---|---|
+| T1.1 | BE | — | 新建 `packages/contract`：zod schemas（§7.1）、`openapi.yaml` 生成脚本 `yarn contract:build`；`packages/shared` 对外类型改为从 contract 转导出 | `yarn contract:build` 产物稳定；`yarn typecheck && yarn test` 通过；`npx @redocly/cli lint openapi.yaml` 0 error |
+| T1.2 | BE | T1.1 | API 引入 `fastify-type-provider-zod`；新增 `/v1` 前缀注册全部现有路由（共享 handler）；`/v1` 使用统一错误格式 | `apps/api/src/app.test.ts` 新增 `/v1` 用例并通过；旧路由行为不变 |
+| T1.3 | BE | T1.1 | `packages/i18n`：`zh-Hans.json`（文案）、`errors.json`（错误码→文案）；生成 `ts` 与 `xcstrings` | 所有现有后端错误码在字典中有条目（测试校验） |
+| T1.4 | PX | — | `packages/design-tokens`：从 `apps/mp-weixin/src/styles/theme.scss` 与 `docs/prototype/index.html` `:root` 抽取为 DTCG `tokens.json`；Style Dictionary v4 输出 `css`、`scss`（rpx = px×2）、`swift` | 生成物入库；小程序 `theme.scss` 改为引用生成变量后视觉无变化（截图对比） |
+| T1.5 | BE | T1.1 | `@demo2song/contract-client`：`openapi-typescript` + `openapi-fetch`，供小程序/web-share 使用 | 类型生成通过；示例调用单测 |
+
+### 9.2 M2 · 账号与鉴权
+
+| ID | 角色 | 依赖 | 内容 | 验收 |
+|---|---|---|---|---|
+| T2.1 | BE | — | 数据模型与 repository 方法（§3.2），memory + cloudbase 双实现；`init-cloudbase.ts` 加集合 | `packages/data` 单测覆盖全部新方法 |
+| T2.2 | BE | T1.2, T2.1 | `jose` JWT、`require-user` preHandler、refresh 轮换与重放检测、`LEGACY_HEADER_AUTH`；env 增 `JWT_SECRET` | 单测：过期/篡改/重放/吊销/mergedInto 均 401 |
+| T2.3 | BE | T2.2 | `/v1/auth/wechat-mp`（含 unionid）+ 解析算法 §3.5 + `/v1/auth/refresh` `/logout` `/v1/me` | 单测覆盖 §3.5 四条分支 |
+| T2.4 | BE | T2.1 | 迁移脚本 `migrate-identities.ts`（dry-run、可重入） | 对 memory 数据跑两次结果一致；生产 dry-run 报告 |
+| T2.5 | MP | T2.3, T1.5 | 小程序改用 `/v1` + Bearer：token 存 Storage、自动刷新、401 重试一次；移除 `x-user-id` | 本地 E2E（`Agent.md` 流程）全通；发版 |
+| T2.6 | BE | T2.3 | `/v1/auth/wechat-app`、`/v1/auth/apple`（Apple JWKS，`aud`=Bundle ID）；env 增 `WECHAT_OPEN_APP_ID/SECRET`、`APPLE_BUNDLE_ID` | 单测（mock JWKS / mock 微信接口） |
+| T2.7 | BE | T2.6 | `/v1/me/identities`、`/v1/me/merge`（§3.6），`reassignUserData` | 单测：无冲突绑定、两种合并、进行中任务拒绝、merge 重入幂等、配额累加 |
+| T2.8 | BE | T2.6 | `DELETE /v1/me`（§3.8）+ worker 定时清理 | 单测；Apple revoke 用 mock |
+| T2.9 | BE | T2.5 发版 ≥ 2 周 | 生产 `LEGACY_HEADER_AUTH=false` | 伪造 `x-user-id` 请求 → 401 |
+
+### 9.3 M3 · 全站原型 + Harness MVP
+
+| ID | 角色 | 依赖 | 内容 | 验收 |
+|---|---|---|---|---|
+| T3.1 | PX | T1.3, T1.4 | `design/prototype` 骨架：shell、runtime（路由/URL 协议/fixture/data-copy/data-when）、`build.mjs`、`screens.yaml` | 双击 `dist/prototype.html` 可切换 screen/state/device；`capture=1` 只渲染设备内容 |
+| T3.2 | PX | T3.1 | **以现有小程序为基线**还原全部 screen（record / compose / generating / demo-result / song / full-compose / library / share-landing / consent-voiceprint）及全部状态；迁移并废弃 `docs/prototype/index.html` | E 评审通过（只看原型） |
+| T3.3 | PX | T3.1 | `specs/fixtures`：user-new、user-with-songs、song-demo-ready、song-full-ready、job-queued/running/failed、long-lyrics、empty-library、many-songs(50) | 原型全部 state 都有可用 fixture |
+| T3.4 | HX | T3.1 | `tools/harness`：`proto build`、`golden`（Playwright） | 生成 `specs/golden/**`，重复运行无 diff |
+| T3.5 | MP | T3.2 | 小程序加 `data-ui`（与原型一致）、`FixtureTransport` + `__fixture/__state` 注入（`TARO_APP_HARNESS=1`） | 生产构建 dist 中不含 harness 代码（grep 校验） |
+| T3.6 | HX | T3.4, T3.5 | `capture --platform mp`（miniprogram-automator）、`diff`（结构/文案/SSIM）、`report` | 首份 mp parity 报告；结构/文案全绿 |
+| T3.7 | HX | T3.6 | 视觉评审 agent（rubric prompt + 输出 schema）、`verify` 命令、CI workflow（PR 触发 golden + diff 报告作为 artifact） | 人为改坏一个按钮颜色能被识别并给出修复指令 |
+| T3.8 | HX | T3.7 | `feature new`、胶囊模板、`specs/platform-adapters.md`、`specs/AGENTS.md`、`apps/*/AGENTS.md` | 用一个小需求（如「歌曲页显示 AI 生成标识」）全流程跑通 |
+
+### 9.4 M4 · iOS 所需后端能力
+
+| ID | 角色 | 依赖 | 内容 | 验收 |
+|---|---|---|---|---|
+| T4.1 | BE | T1.2 | 预签名直传（§7.2）+ worker 支持 m4a | 单测；本地 E2E 用 m4a 文件跑通 mock 生成 |
+| T4.2 | BE | T1.2 | SSE `/v1/jobs/{id}/events` | 集成测试：状态变化在 ≤3s 内送达；断线重连 |
+| T4.3 | BE | T2.2 | subscriptions + devices 接口；`notificationAccepted` 兼容 | 单测 |
+| T4.4 | BE | T4.3, X3 | worker `Notifier`：wechat（迁移现有）、apns、apns_live_activity | 沙盒环境真机收到通知与 Live Activity 更新 |
+| T4.5 | BE | T1.2 | `listSongsWithStats` 去 N+1；`/v1/config/public` 下发 options | 50 首歌列表接口 P95 显著下降（记录前后数据） |
+| T4.6 | BE | T1.5, X4 | `apps/web-share` + AASA + 部署 | 浏览器打开 `/p/{id}` 可试听；AASA 校验通过 |
+| T4.7 | BE | — | AI 生成标识写入音频 tag | worker 单测读回 tag |
+
+### 9.5 M5 · iOS App
+
+| ID | 角色 | 依赖 | 内容 | 验收 |
+|---|---|---|---|---|
+| T5.1 | IOS | T1.1, T1.3, T1.4, X2 | XcodeGen 工程、SPM 模块、`harness codegen` 接入 Swift 生成物、`UIID.swift` 生成 | `xcodebuild build` 通过；生成物无手改（CI diff 校验） |
+| T5.2 | IOS | T5.1 | `D2SDesign` 组件库 + 组件截图测试 | 每个组件对照原型 `components.css` 截图 |
+| T5.3 | IOS | T5.1 | `D2SCore`：Keychain AuthStore、APIClient（自动刷新）、FixtureTransport、SSEClient | 单测 |
+| T5.4 | IOS | T5.3, T2.6, X5 | Login：Sign in with Apple + 微信登录；`login.merge-required` 流程 | 真机两种登录可用 |
+| T5.5 | IOS | T5.3 | `D2SAudio`：录音（AVAudioEngine、电平、锁定）、播放（NowPlaying、远程控制、后台） | 真机锁屏可控制播放 |
+| T5.6 | IOS | T5.5, T4.1 | Record + Compose + 上传 | 对应胶囊 `verify` 通过 |
+| T5.7 | IOS | T5.6, T4.2 | Generating（SSE）+ DemoResult | `verify` 通过 |
+| T5.8 | IOS | T5.7 | Song、FullCompose、Library | `verify` 通过 |
+| T5.9 | IOS | T5.3 | Consent、Account（身份列表、绑定、合并、注销） | `verify` 通过 |
+| T5.10 | HX | T5.1 | `capture --platform ios`（XCUITest + simctl） | iOS parity 报告生成 |
+| T5.11 | IOS | T5.7, T4.4 | Live Activity + 灵动岛 | 后台收到 push 更新并结束 |
+| T5.12 | IOS | T5.6 | App Intents、锁屏/桌面 Widget、Control | 从锁屏一步进入录音 |
+| T5.13 | IOS | T5.8, T4.6, X5 | 分享：ShareLink + 微信小程序卡片；Universal Link 打开 `song` | 微信内点卡片进小程序；Safari 链接唤起 App |
+
+### 9.6 M6 · 上架
+
+| ID | 角色 | 依赖 | 内容 |
+|---|---|---|---|
+| T6.1 | IOS | M5 | `PrivacyInfo.xcprivacy`、App Privacy 标签、麦克风/通知权限文案 |
+| T6.2 | E | X6 | 隐私政策、用户协议、AI 生成标识说明、备案号展示 |
+| T6.3 | IOS | T6.1 | TestFlight 内测（至少 1 周），修复问题 |
+| T6.4 | E | T6.3 | 提审（4.8 SIWA、5.1.1(v) 注销、录音用途说明） |
+
+### 9.7 依赖与并行
 
 ```mermaid
 flowchart LR
-  R["需求一句话"] --> S1["① Spec Agent\n生成 Capsule 草稿\n+ prototype.html"]
-  S1 --> G1{"人工评审\n（只看 HTML）"}
-  G1 -- 修改 --> S1
-  G1 -- 通过 --> S2["② Contract Agent\ncontract.yaml → api 实现\n+ 单测 + codegen"]
-  S2 --> P["③ 并行端 Agent（各自 worktree）"]
-  P --> MP["mp-weixin Agent"]
-  P --> IOS["iOS Agent"]
-  MP & IOS --> V["④ Verify Loop"]
-  V --> V1["build / typecheck / 单测"]
-  V --> V2["acceptance 场景"]
-  V --> V3["逐状态截图 vs golden"]
-  V1 & V2 & V3 --> J{"达标?"}
-  J -- 否, ≤N 轮 --> P
-  J -- 是 --> RPT["⑤ Parity 报告 + PR"]
+  T1_1["T1.1"]
+  T1_2["T1.2"]
+  T1_3["T1.3"]
+  T1_4["T1.4"]
+  T1_5["T1.5"]
+  T2_1["T2.1"]
+  T2_2["T2.2"]
+  T2_3["T2.3"]
+  T2_5["T2.5"]
+  T2_6["T2.6"]
+  T2_7["T2.7"]
+  T2_8["T2.8"]
+  T2_9["T2.9"]
+  T3_1["T3.1"]
+  T3_2["T3.2"]
+  T3_3["T3.3"]
+  T3_4["T3.4"]
+  T3_5["T3.5"]
+  T3_6["T3.6"]
+  T3_7["T3.7"]
+  T3_8["T3.8"]
+  T4_1["T4.1"]
+  T4_2["T4.2"]
+  T4_3["T4.3"]
+  T4_4["T4.4"]
+  T4_5["T4.5"]
+  T5_1["T5.1"]
+  T5_2["T5.2"]
+  T5_3["T5.3"]
+  T5_4["T5.4"]
+  T5_5["T5.5"]
+  T5_6["T5.6"]
+  T5_7["T5.7"]
+  T5_8["T5.8"]
+  T5_9["T5.9"]
+  T5_10["T5.10"]
+  T5_11["T5.11"]
+  T5_13["T5.13"]
+  T1_1 --> T1_2 --> T2_2 --> T2_3 --> T2_5 --> T2_9
+  T1_1 --> T1_3 & T1_5
+  T2_1 --> T2_2
+  T2_3 --> T2_6 --> T2_7 & T2_8
+  T1_4 --> T3_1
+  T1_3 --> T3_1 --> T3_2 --> T3_5 --> T3_6 --> T3_7 --> T3_8
+  T3_1 --> T3_3 & T3_4 --> T3_6
+  T1_2 --> T4_1 & T4_2 & T4_5
+  T4_3 --> T4_4
+  T3_8 --> T5_1
+  T5_1 --> T5_2 & T5_3 & T5_10
+  T5_3 --> T5_4 & T5_5 & T5_9
+  T5_5 --> T5_6 --> T5_7 --> T5_8
+  T4_1 --> T5_6
+  T4_2 --> T5_7
+  T5_7 --> T5_11
+  T4_4 --> T5_11
+  T5_8 --> T5_13
 ```
 
-CLI（`tools/harness`，Node + TS）：
+三条可并行的线：**BE（M1→M2→M4）**、**PX/HX（T1.4→M3）**、**IOS（T5.1 起，先用 FixtureTransport 开发，后端就绪后切真接口）**。建议 T5.1–T5.3 在 T3.8 完成前就启动，不阻塞。
 
-```
-harness feature new "<一句话需求>"     # ① 生成胶囊骨架，调用 Spec Agent
-harness golden <feature>              # Playwright 渲染 prototype.html × states × devices → specs/golden/
-harness codegen                        # contract/tokens/i18n/flow → 各端生成物
-harness implement <feature> --platform ios|mp|api|all   # 派发 agent（可接 Multica 子 issue）
-harness capture <feature> --platform ios|mp            # 用 fixtures 渲染各端截图
-harness diff <feature>                 # 结构 + 文案 + 视觉三层比对
-harness report <feature>               # 生成 parity.html，更新 specs/parity.yaml
-harness verify <feature>               # = codegen + build + acceptance + capture + diff（CI 入口）
-```
+---
 
-### 7.4 截图与比对
+## 10. 通用约定与 DoD
 
-**采集**
+每个任务合并前必须满足：
 
-| 端 | 方式 | 注入状态 |
+1. `yarn config:validate && yarn typecheck && yarn test` 通过；涉及 iOS 时 `xcodebuild test` 通过。
+2. 契约变更先改 `packages/contract`，`yarn harness codegen` 后生成物无 diff。
+3. 涉及 UI：原型先改并经 E 评审 → 端实现 → 对应胶囊 `yarn harness verify --feature <id>` 通过或差异已在 `divergence` 声明。
+4. 状态覆盖：空 / 加载 / 错误 / 成功 / 边界（长文本、0 条、50+ 条）在原型和端实现中都存在。
+5. 不提交密钥；新增 env 同步更新 `.env.example` 与 `apps/*/src/env.ts`。
+6. 后端行为变更遵循 `Agent.md` 的 E2E 流程验证后再部署。
+7. 新增/修改胶囊后更新 `specs/parity.yaml`。
+
+分支与 PR：一个任务一个分支 `feat/<task-id>-<slug>`，PR 标题前缀 `[T2.3]`；对应 Multica 子 issue。
+
+---
+
+## 11. 风险
+
+| 风险 | 影响 | 应对 |
 |---|---|---|
-| 原型 | Playwright，视口 390×844 @3x（iPhone 15）、375×667 @2x（SE） | `?state=&fixture=&capture=1` |
-| iOS | XCUITest 启动参数 `-ui-capture -feature X -state Y -fixture Z`，App 内 `FixtureTransport` 替代网络；`xcrun simctl io booted screenshot`；同时导出 accessibility 树 | 同一 fixture JSON 打包进 UITest bundle |
-| 小程序 | `miniprogram-automator` 连接开发者工具（`Agent.md` 已记录端口 57488）；页面 query 注入 `__fixture`；`miniProgram.screenshot()` + `page.$$('[data-ui]')` 导出节点树 | 同一 fixture，经 `request.ts` 的 mock 适配器 |
-
-**三层比对**（从便宜到昂贵，前一层不过不跑后一层）：
-
-1. **结构**：golden 的 `data-ui` 集合与顺序 vs 端的 accessibility 树/节点树。缺失、多余、顺序错 → 硬失败。
-2. **文案**：每个 `data-copy` 元素的最终文本与 `copy.json` 一致（允许 `divergence` 声明）。
-3. **视觉**：
-   - 按 `data-ui` 的 bounding box 做区域对齐后 SSIM，阈值默认 0.92（安全区、状态栏、系统导航遮罩）；
-   - 低于阈值时交给**视觉评审 Agent**，用固定 rubric（层级、间距节奏 8pt、色彩 Token、字号级别、对齐、状态完整性）输出「可接受差异 / 需修复 + 修复指令」，修复指令回灌给端 Agent。
-
-**为什么不追求像素级一致**：SwiftUI 与小程序的字体渲染、系统控件天然不同；像素级要求会逼 AI 去 hack。结构 + 文案硬约束、视觉软约束 + AI 评审，才是可持续的。
-
-### 7.5 平台适配映射（`specs/platform-adapters.md`）
-
-HTML 原型表达「意图」，端 Agent 依此表翻译为平台惯用法，避免把 Web 交互生硬搬到 iOS：
-
-| 意图 | 原型表达 | mp-weixin | iOS |
-|---|---|---|---|
-| intent.share | `<button data-intent="share">` | `useShareAppMessage` + `open-type="share"` | `ShareLink` + 微信小程序卡片 |
-| intent.notify-when-done | 「完成后提醒我」开关 | `requestSubscribeMessage` | 通知权限 + Live Activity |
-| intent.save-file | 下载图标 | `downloadFile` + `saveFileToDisk` | `fileExporter` / 存到「文件」 |
-| intent.hold-to-record | 按住大圆按钮 | `RecorderManager` | `AVAudioEngine` + 长按 & 上滑锁定 |
-| intent.sheet | `.sheet` 面板 | 自绘半屏弹层 | `.sheet` + `presentationDetents` |
-| intent.toast | `.toast` | `showToast` | 顶部 HUD（非阻塞） |
-| intent.back | 左上返回 | 系统导航栏 | NavigationStack 返回 / 边缘右滑 |
-
-新增端（Android/Web）= 在此表加一列 + 一个端 Agent 指令文件，胶囊无需改动。
-
-### 7.6 Parity 矩阵（`specs/parity.yaml`）
-
-```yaml
-features:
-  record-humming:         { api: done, mp-weixin: done, ios: pending }
-  demo-generation:        { api: done, mp-weixin: done, ios: pending }
-  full-song-lyrics-draft: { api: done, mp-weixin: done, ios: pending }
-  library:                { api: done, mp-weixin: done, ios: pending }
-  account-apple-login:    { api: pending, mp-weixin: n/a, ios: pending }
-```
-
-CI：PR 若修改了某胶囊而未让 `platforms` 中所有端 `verify` 通过，标红但不阻塞（允许分批）；`main` 上的 parity 报告是一张始终可见的「多端欠债表」（蔡格尼克效应：未完成项持续可见，推动补齐）。
-
-### 7.7 与 Multica 的结合
-
-一个需求 = 父 issue；Harness `implement --platform all` 产出分阶段子 issue：
-
-- Stage 1：Spec + HTML 原型（本角色，交付评审）
-- Stage 2：Contract + API
-- Stage 3（并行）：mp-weixin、iOS
-- Stage 4：Parity 评审（视觉评审 Agent 汇总报告）
-
-父 issue 使用 `--until-children-done` wakeup 汇总。
-
-### 7.8 Agent 指令文件
-
-- 根 `AGENTS.md`：只放跨端规则与 Harness 入口；
-- `apps/ios/AGENTS.md`：Swift 风格、禁止手改生成物、截图命令、模拟器型号固定；
-- `apps/mp-weixin/AGENTS.md`：Taro 约束、`data-ui` 约定、rpx 换算（750 稿 = 原型 px × 2）；
-- `specs/AGENTS.md`：胶囊写作规范、原型只用 Token、状态必须覆盖 空/加载/错误/成功/边界。
-
----
-
-## 8. 被重新定义的关键交互 / 数据流
-
-### 8.1 生成等待：「停在页面轮询」→「Live Activity 跟随」
-
-- **原方式**：小程序 `pages/generation` 每 2.5s 轮询，用户需要停留或依赖一条订阅消息。
-- **新方式**：提交后立即回到首页，锁屏与灵动岛出现 Live Activity：`排队中 → 编曲中（预计 40s） → 已完成，点按试听`；服务端经 APNs Live Activity push 推进状态，App 无需前台。完成时灵动岛展开显示歌名与播放按钮，可直接在灵动岛播放。
-- **为什么更好**：生成本质是 30–120s 的不确定等待。**预期管理**（明确阶段 + ETA）降低焦虑；**蔡格尼克效应**让未完成任务持续可见但不打扰；**峰终定律**——「完成那一刻」是整个产品的情绪峰值，把它放在灵动岛展开 + 一键试听，而不是一条冷冰冰的通知。
-- **数据流变化**：轮询 → SSE（前台）+ APNs（后台），对应 §5.3。小程序端保留轮询 + 订阅消息，属于 `divergence`。
-
-### 8.2 灵感捕捉：「打开 App 才能录」→「任何地方 1 步开录」
-
-- **原方式**：打开小程序 → 等登录 → 首页按住录音。
-- **新方式**：锁屏控件 / Control Center / Action Button / Siri「用随哼录一段」直接进入录音态（App Intent，`openAppWhenRun`），录完先本地保存为「灵感草稿」，补充信息可以稍后再填。
-- **为什么更好**：灵感窗口只有几秒，**费茨定律**之外更重要的是「路径长度」；把「录」和「描述」解耦（**渐进式披露**），避免灵感在表单面前流失。草稿列表同时是一个 **蔡格尼克** 入口：「你有 2 段旋律还没变成歌」。
-- **对小程序的反哺**：草稿概念同样适用小程序（本地缓存 + 服务端 `recordings` 已天然支持「录音先于歌曲存在」）。
-
-### 8.3 多端开发：「每端各写一遍」→「Feature Capsule 编译到各端」
-
-- **原方式**：需求 → 各端分别理解、分别实现、靠人眼比对。
-- **新方式**：需求 → 胶囊（HTML 原型即评审物）→ Harness 编译到各端 → 机器比对 → Parity 报告。
-- **为什么更好**：评审对象从「N 个端的实现」收敛为「1 个 HTML」（**希克定律**：减少决策点）；一致性从「靠记忆」变为「靠流水线」（**默认值效应**：不做额外动作时，结果就是一致的）。
-
----
-
-## 9. 落地路线
-
-| 阶段 | 内容 | 验收 |
-|---|---|---|
-| **P0 基建**（1 个迭代） | `packages/contract`（zod→OpenAPI，TS client 替换 mp 手写 request 类型）；`packages/design-tokens`（从 `theme.scss` / 原型 `:root` 抽取）；`packages/i18n`（错误码字典）；`/v1` 路由并存 | mp 行为零变化；`openapi.yaml` 通过 lint；`yarn typecheck && yarn test` 通过 |
-| **P1 身份与安全** | JWT + refresh；`identities` 表；`/v1/auth/wechat-mp` 先上线并发版小程序；关闭 `x-user-id` | 伪造 `x-user-id` 请求返回 401；老用户数据无损 |
-| **P2 Harness MVP** | `harness golden/capture/diff/report`；把现有 `docs/prototype/index.html` 拆成 `record / compose / generation` 三个胶囊并补状态；先只接小程序 | 小程序 3 个胶囊 parity 报告生成，结构比对全绿 |
-| **P3 iOS 核心链路** | 用 Harness 逐胶囊生成 iOS：Apple 登录 → 录音 → 补充信息 → 生成（SSE）→ 歌曲页 → 资料库；预签名上传；APNs | 真机走通主路径；iOS 与小程序 parity 全绿或差异均已声明 |
-| **P4 iOS 体验** | Live Activity、App Intents/控件、Now Playing、微信 SDK 分享、Universal Link + `apps/web-share`、账号绑定/注销 | TestFlight 内测 |
-| **P5 合规上架** | 见 §10 | App Store 审核通过 |
-| **P6 常态化** | 所有新需求必须走 `harness feature new`；Android 作为第三端验证 Harness 的可扩展性（可选） | 一个新需求从原型通过到双端 PR ≤ 1 天 |
-
----
-
-## 10. 风险与合规（以官方最新规则为准）
-
-| 项 | 说明 |
-|---|---|
-| App Store 4.8 | 提供微信登录则需同时提供 Sign in with Apple（或满足等效隐私要求的登录方式） |
-| App Store 5.1.1(v) | 支持账号创建就必须支持 App 内注销账号 |
-| App Store 3.1.1 | 若售卖生成次数/会员，必须走 IAP；小程序侧虚拟支付另有规则，两端权益需服务端统一记账 |
-| 中国区 APP 备案 | 上架中国区 App Store 需完成 App ICP 备案 |
-| 生成式 AI 合规 | 面向公众提供生成服务涉及生成式 AI 服务备案/登记（或使用已备案模型的说明），以及《人工智能生成合成内容标识办法》的显式/隐式标识要求——建议在音频元数据（ID3/m4a tag）和播放页写入「AI 生成」标识 |
-| 声纹/个人信息 | 已有声纹授权页；iOS 需在隐私清单（PrivacyInfo.xcprivacy）与 App Privacy 标签中声明录音数据用途 |
-| 微信开放平台 | iOS 微信登录与分享小程序卡片需开放平台移动应用审核，且与小程序同主体绑定以拿 unionid |
-| 技术风险 | Harness 视觉比对误报 → 以结构/文案硬约束为主、视觉 AI 评审为辅，阈值可按胶囊调 |
-
----
-
-## 11. 需要你拍板的点（附默认值）
-
-1. **账号打通方式**（影响 P1/P3）：默认「微信开放平台 unionid 打通 + Apple 登录后可补绑微信」。若暂不想申请开放平台，替代方案是「手机号作为合并键」。
-2. **原型粒度**：默认「每个胶囊一个 `prototype.html`，共享 tokens 与组件 CSS」；另一种是「全站一个大原型 + 胶囊只引用片段」，后者更像产品全貌但 AI 修改冲突更多。
-
-其余（Android 是否规划、是否收费）不影响本期架构，已按 §1 假设处理。
-
----
-
-## 附录 A · Design Token 规范（DTCG）
-
-```json
-{
-  "color": {
-    "bg":      { "0": { "$value": "#0b0420" }, "1": { "$value": "#1a0b3d" }, "deep": { "$value": "#05020d" } },
-    "accent":  { "primary": { "$value": "#b98bff" }, "indigo": { "$value": "#6a5cff" }, "pink": { "$value": "#ff7ad9" } },
-    "text":    { "primary": { "$value": "#f4f1ff" }, "secondary": { "$value": "#b3a8d6" } },
-    "surface": { "card": { "$value": "rgba(255,255,255,0.06)" }, "stroke": { "$value": "rgba(255,255,255,0.12)" } }
-  },
-  "space":  { "1": { "$value": "8px" }, "2": { "$value": "16px" }, "3": { "$value": "24px" }, "4": { "$value": "32px" } },
-  "font":   { "title": { "$value": { "size": "21px", "weight": 700 } }, "body": { "$value": { "size": "15px", "weight": 400 } }, "caption": { "$value": { "size": "12.5px", "weight": 400 } } },
-  "motion": { "duration": { "fast": { "$value": "120ms" }, "base": { "$value": "240ms" }, "slow": { "$value": "400ms" } },
-              "ease": { "standard": { "$value": [0.2, 0.8, 0.2, 1] } } }
-}
-```
-
-输出：`--d2s-color-accent-primary`（CSS，原型/H5）、`$d2s-color-accent-primary` + px→rpx×2（SCSS，小程序）、`Color.d2s.accentPrimary` / `Spacing.s2` / `Motion.base`（Swift）。数值取自现有 `theme.scss` 与原型 `:root`，P0 抽取时以实际值为准。
-
-## 附录 B · 契约生成链
-
-```
-apps/api 路由中的 zod schema
-   └─ 迁移到 packages/contract/src/schemas/*.ts（单一定义）
-        ├─ @asteasolutions/zod-to-openapi → packages/contract/openapi.yaml
-        │     ├─ openapi-typescript + openapi-fetch → @demo2song/contract-client（mp / web-share）
-        │     └─ swift-openapi-generator → apps/ios/Packages/D2SContract
-        └─ fastify-type-provider-zod → apps/api 直接复用 schema 做校验
-```
-
-规则：契约变更必须先改 `packages/contract`，`harness codegen` 后 CI 检查生成物无 diff（防止手改）。
-
-## 附录 C · iOS 截图模式约定
-
-```swift
-// App 启动参数：-ui-capture -feature full-song-lyrics-draft -state draft-ready -fixture long-lyrics
-// 1. 用 FixtureTransport 替换 URLSessionTransport（读取 bundle 内 fixtures/*.json）
-// 2. 将 flow 状态机直接置为指定 state
-// 3. 关闭动画（UIView.setAnimationsEnabled(false)）与光标闪烁，固定时间 2026-01-01 20:00
-// 4. 所有 ui-id 写入 accessibilityIdentifier，供结构比对导出
-```
-
-模拟器固定：iPhone 15（390×844@3x）、iPhone SE 3（375×667@2x），浅色/深色各一套（首版仅深色）。
+| 开放平台审核周期 | unionid / iOS 微信登录延后 | M2 先上 token 鉴权（不依赖 unionid）；unionid 懒回填；iOS 先以 Apple 登录开发 |
+| 老用户从未打开新版小程序 | iOS 微信登录生成新账号 | 登录页提示 + 后续绑定合并（§3.6/3.7） |
+| CloudBase 无跨集合事务 | 合并中途失败 | merge_logs + 每步幂等 + 可重入 |
+| 原型单体变大 | 加载慢、AI 改动冲突 | 源码按 screen 拆分；防冲突规则（§4.6）；dist 只由构建生成 |
+| 视觉比对误报 | Harness 噪声大、agent 反复返工 | 结构/文案硬约束，视觉软约束 + AI 评审；返工上限 3 轮后交人工 |
+| SSE 在云托管网关的长连接限制 | 前台进度中断 | 客户端自动重连 + 轮询降级；必要时缩短连接周期 |
+| 合规（App 备案、生成式 AI 备案、AI 内容标识） | 上架受阻 | X6 提前启动；以官方最新要求为准 |
