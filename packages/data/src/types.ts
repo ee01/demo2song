@@ -14,9 +14,39 @@ export interface BaseRecord {
   updatedAt: string;
 }
 
+export type IdentityProvider = "wechat_mp" | "wechat_app" | "apple";
+
 export interface UserRecord extends BaseRecord {
-  openId: string;
+  openId?: string;
   sessionKey?: string;
+  displayName?: string;
+  mergedInto?: string;
+  deletedAt?: string;
+}
+
+export interface IdentityRecord extends BaseRecord {
+  userId: string;
+  provider: IdentityProvider;
+  subject: string;
+  unionId?: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface SessionRecord extends BaseRecord {
+  userId: string;
+  client: "mp" | "ios" | "web";
+  refreshTokenHash: string;
+  expiresAt: string;
+  revokedAt?: string;
+  replacedBy?: string;
+}
+
+export interface MergeLogRecord extends BaseRecord {
+  survivorUserId: string;
+  absorbedUserId: string;
+  status: "pending" | "done" | "failed";
+  movedCounts?: Record<string, number>;
+  error?: string;
 }
 
 export interface RecordingRecord extends BaseRecord {
@@ -69,6 +99,7 @@ export interface UsageQuotaRecord extends BaseRecord {
   dateKey: string;
   kind: SongJobKind;
   used: number;
+  appliedSourceIds?: string[];
 }
 
 export interface ProviderEventRecord extends BaseRecord {
@@ -96,6 +127,21 @@ export type CreateSongJobInput = Omit<SongJobRecord, keyof BaseRecord>;
 export interface Demo2SongRepository {
   upsertUserByOpenId(openId: string, sessionKey?: string): Promise<UserRecord>;
   getUserById(id: string): Promise<UserRecord | null>;
+  findIdentity(provider: IdentityProvider, subject: string): Promise<IdentityRecord | null>;
+  findIdentityByUnionId(unionId: string): Promise<IdentityRecord | null>;
+  listIdentitiesForUser(userId: string): Promise<IdentityRecord[]>;
+  createIdentity(input: Omit<IdentityRecord, keyof BaseRecord>): Promise<IdentityRecord>;
+  updateIdentity(id: string, patch: Partial<IdentityRecord>): Promise<void>;
+  createUser(input?: Partial<UserRecord>): Promise<UserRecord>;
+  updateUser(id: string, patch: Partial<UserRecord>): Promise<void>;
+  createSession(input: Omit<SessionRecord, keyof BaseRecord>): Promise<SessionRecord>;
+  findSessionByHash(hash: string): Promise<SessionRecord | null>;
+  updateSession(id: string, patch: Partial<SessionRecord>): Promise<void>;
+  revokeSessionsForUser(userId: string): Promise<void>;
+  reassignUserData(fromUserId: string, toUserId: string): Promise<Record<string, number>>;
+  countActiveJobsForUser(userId: string): Promise<number>;
+  createMergeLog(input: Omit<MergeLogRecord, keyof BaseRecord>): Promise<MergeLogRecord>;
+  updateMergeLog(id: string, patch: Partial<MergeLogRecord>): Promise<void>;
   createRecording(input: CreateRecordingInput): Promise<RecordingRecord>;
   findRecordingForUser(id: string, userId: string): Promise<RecordingRecord | null>;
   getRecordingById(id: string): Promise<RecordingRecord | null>;

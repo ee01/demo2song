@@ -1,12 +1,24 @@
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
+import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
+import { validatorCompiler } from "fastify-type-provider-zod";
+import { reshapeV1Payload, v1ErrorHandler } from "./http/v1.js";
 import { authRoutes } from "./routes/auth.js";
 import { configRoutes } from "./routes/config.js";
 import { jobRoutes } from "./routes/jobs.js";
 import { publicRoutes } from "./routes/public.js";
 import { recordingRoutes } from "./routes/recordings.js";
 import { songRoutes } from "./routes/songs.js";
+
+async function mountApiRoutes(app: FastifyInstance): Promise<void> {
+  await configRoutes(app);
+  await authRoutes(app);
+  await recordingRoutes(app);
+  await songRoutes(app);
+  await jobRoutes(app);
+  await publicRoutes(app);
+}
 
 export async function buildApp() {
   // Keep Fastify's request-body ceiling aligned with the CloudBase CloudRun
@@ -22,12 +34,14 @@ export async function buildApp() {
   });
 
   app.get("/health", async () => ({ ok: true }));
-  await app.register(configRoutes);
-  await app.register(authRoutes);
-  await app.register(recordingRoutes);
-  await app.register(songRoutes);
-  await app.register(jobRoutes);
-  await app.register(publicRoutes);
+  await mountApiRoutes(app);
+  await app.register(async (scope) => {
+    scope.decorate("contractRoutes", true);
+    scope.setValidatorCompiler(validatorCompiler);
+    scope.setErrorHandler(v1ErrorHandler);
+    scope.addHook("preSerialization", async (_request, _reply, payload) => reshapeV1Payload(payload));
+    await mountApiRoutes(scope);
+  }, { prefix: "/v1" });
 
   return app;
 }

@@ -1,21 +1,22 @@
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
+import { idParamsSchema } from "@demo2song/contract";
 import { repository } from "../db.js";
+import { bindRoute } from "./bind.js";
 
 export async function jobRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/jobs/:id/notification", async (request, reply) => {
+  bindRoute(app, "post", "/jobs/:id/notification", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const { id } = idParamsSchema.parse(request.params);
     if (!userId) return reply.code(401).send({ error: "MISSING_USER" });
     const job = await repository.findJobForUser(id, userId);
     if (!job) return reply.code(404).send({ error: "JOB_NOT_FOUND" });
     await repository.updateJob(id, { notificationAccepted: true, notificationError: undefined });
     return reply.send({ ok: true });
-  });
+  }, { params: idParamsSchema });
 
-  app.get("/jobs/:id", async (request, reply) => {
+  bindRoute(app, "get", "/jobs/:id", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const { id } = idParamsSchema.parse(request.params);
     if (!userId) {
       return reply.code(401).send({ error: "MISSING_USER" });
     }
@@ -36,5 +37,5 @@ export async function jobRoutes(app: FastifyInstance): Promise<void> {
       createdAt: job.createdAt,
       updatedAt: job.updatedAt
     });
-  });
+  }, { params: idParamsSchema });
 }

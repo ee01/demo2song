@@ -17,6 +17,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@demo2song/contract": "0.1.0"
+  },
   "devDependencies": {
     "typescript": "^5.8.3",
     "vitest": "^2.1.9"

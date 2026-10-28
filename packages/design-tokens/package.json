@@ -1,0 +1,25 @@
+{
+  "name": "@demo2song/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./css": "./generated/css/tokens.css",
+    "./scss": "./generated/scss/tokens.scss",
+    "./swift": "./generated/swift/Tokens.swift"
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "style-dictionary": "4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.9"
+  }
+}

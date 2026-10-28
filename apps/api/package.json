@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@demo2song/config": "0.1.0",
+    "@demo2song/contract": "0.1.0",
     "@demo2song/data": "0.1.0",
     "@demo2song/shared": "0.1.0",
+    "fastify-type-provider-zod": "2.1.0",
     "@fastify/cors": "^9.0.1",
     "@fastify/multipart": "^8.3.1",
     "cos-nodejs-sdk-v5": "^2.14.7",

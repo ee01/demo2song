@@ -27,7 +27,7 @@ export async function sendGenerationNotice(job: SongJobRecord, song: SongRecord)
   if (!env.WECHAT_APP_ID || !env.WECHAT_APP_SECRET || !env.WECHAT_SUBSCRIBE_TEMPLATE_ID) return;
   try {
     const user = await repository.getUserById(job.userId);
-    if (!user) throw new Error("User not found");
+    if (!user?.openId) throw new Error("User has no WeChat openId");
     const token = await accessToken();
     const response = await fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${token}`, {
       method: "POST",

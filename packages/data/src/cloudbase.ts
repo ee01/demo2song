@@ -1,19 +1,34 @@
 import cloudbase from "@cloudbase/node-sdk";
+import { RepositoryConflictError } from "./errors.js";
 import type {
+  BaseRecord,
   CreateRecordingInput,
   CreateSongInput,
   CreateSongJobInput,
   Demo2SongRepository,
+  IdentityProvider,
+  IdentityRecord,
+  MergeLogRecord,
   ProviderEventRecord,
   RecordingRecord,
+  SessionRecord,
   SongJobRecord,
   SongRecord,
   UsageQuotaRecord,
   UserRecord
 } from "./types.js";
-import { nowIso, todayKey } from "./utils.js";
+import { nowIso, todayKey, withoutUndefined } from "./utils.js";
 
-type CollectionName = "users" | "recordings" | "songs" | "song_jobs" | "usage_quotas" | "provider_events";
+type CollectionName =
+  | "users"
+  | "recordings"
+  | "songs"
+  | "song_jobs"
+  | "usage_quotas"
+  | "provider_events"
+  | "identities"
+  | "sessions"
+  | "merge_logs";
 
 export class CloudBaseRepository implements Demo2SongRepository {
   private readonly db: any;
@@ -38,6 +53,90 @@ export class CloudBaseRepository implements Demo2SongRepository {
 
   async getUserById(id: string): Promise<UserRecord | null> {
     return this.findOne<UserRecord>("users", { id });
+  }
+
+  async findIdentity(provider: IdentityProvider, subject: string): Promise<IdentityRecord | null> {
+    return this.findOne<IdentityRecord>("identities", { provider, subject });
+  }
+
+  async findIdentityByUnionId(unionId: string): Promise<IdentityRecord | null> {
+    if (!unionId) return null;
+    return this.findOne<IdentityRecord>("identities", { unionId });
+  }
+
+  async listIdentitiesForUser(userId: string): Promise<IdentityRecord[]> {
+    const identities = await this.listAll<IdentityRecord>("identities", { userId });
+    return identities.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  async createIdentity(input: Omit<IdentityRecord, keyof BaseRecord>): Promise<IdentityRecord> {
+    const existing = await this.findIdentity(input.provider, input.subject);
+    if (existing) {
+      throw new RepositoryConflictError(`Identity already exists: ${input.provider}:${input.subject}`);
+    }
+    return this.insert<IdentityRecord>("identities", withoutUndefined({ ...input }));
+  }
+
+  async updateIdentity(id: string, patch: Partial<IdentityRecord>): Promise<void> {
+    await this.updateById("identities", id, patch);
+  }
+
+  async createUser(input: Partial<UserRecord> = {}): Promise<UserRecord> {
+    const { id: _id, _id: _docId, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = input;
+    return this.insert<UserRecord>("users", withoutUndefined(rest));
+  }
+
+  async updateUser(id: string, patch: Partial<UserRecord>): Promise<void> {
+    await this.updateById("users", id, patch);
+  }
+
+  async createSession(input: Omit<SessionRecord, keyof BaseRecord>): Promise<SessionRecord> {
+    const existing = await this.findSessionByHash(input.refreshTokenHash);
+    if (existing) {
+      throw new RepositoryConflictError("Session already exists for refresh token hash");
+    }
+    return this.insert<SessionRecord>("sessions", withoutUndefined({ ...input }));
+  }
+
+  async findSessionByHash(hash: string): Promise<SessionRecord | null> {
+    return this.findOne<SessionRecord>("sessions", { refreshTokenHash: hash });
+  }
+
+  async updateSession(id: string, patch: Partial<SessionRecord>): Promise<void> {
+    await this.updateById("sessions", id, patch);
+  }
+
+  async revokeSessionsForUser(userId: string): Promise<void> {
+    const revokedAt = nowIso();
+    const sessions = await this.listAll<SessionRecord>("sessions", { userId });
+    for (const session of sessions) {
+      if (!session.revokedAt) {
+        await this.updateSession(session.id, { revokedAt });
+      }
+    }
+  }
+
+  async reassignUserData(fromUserId: string, toUserId: string): Promise<Record<string, number>> {
+    const counts = { recordings: 0, songs: 0, song_jobs: 0, usage_quotas: 0 };
+    if (fromUserId === toUserId) return counts;
+    counts.recordings = await this.moveUserField("recordings", fromUserId, toUserId);
+    counts.songs = await this.moveUserField("songs", fromUserId, toUserId);
+    counts.song_jobs = await this.moveUserField("song_jobs", fromUserId, toUserId);
+    counts.usage_quotas = await this.mergeQuotas(fromUserId, toUserId);
+    return counts;
+  }
+
+  async countActiveJobsForUser(userId: string): Promise<number> {
+    const jobs = await this.listAll<SongJobRecord>("song_jobs", { userId });
+    return jobs.filter((job) => job.status === "queued" || job.status === "running").length;
+  }
+
+  async createMergeLog(input: Omit<MergeLogRecord, keyof BaseRecord>): Promise<MergeLogRecord> {
+    return this.insert<MergeLogRecord>("merge_logs", withoutUndefined({ ...input }));
+  }
+
+  async updateMergeLog(id: string, patch: Partial<MergeLogRecord>): Promise<void> {
+    await this.updateById("merge_logs", id, patch);
   }
 
   async createRecording(input: CreateRecordingInput): Promise<RecordingRecord> {
@@ -177,6 +276,72 @@ export class CloudBaseRepository implements Demo2SongRepository {
     if (existing && existing.used > 0) {
       await this.updateById("usage_quotas", existing.id, { used: existing.used - 1 });
     }
+  }
+
+  private async moveUserField(
+    collection: "recordings" | "songs" | "song_jobs",
+    fromUserId: string,
+    toUserId: string
+  ): Promise<number> {
+    const records = await this.listAll<{ id: string; userId: string }>(collection, { userId: fromUserId });
+    for (const record of records) {
+      await this.updateById(collection, record.id, { userId: toUserId });
+    }
+    return records.length;
+  }
+
+  private async mergeQuotas(fromUserId: string, toUserId: string): Promise<number> {
+    const source = await this.listAll<UsageQuotaRecord>("usage_quotas", { userId: fromUserId });
+    const targetRows = await this.listAll<UsageQuotaRecord>("usage_quotas", { userId: toUserId });
+    const targetByKey = new Map<string, UsageQuotaRecord>();
+    for (const quota of targetRows) targetByKey.set(`${quota.dateKey}:${quota.kind}`, quota);
+
+    for (const quota of source) {
+      const key = `${quota.dateKey}:${quota.kind}`;
+      const target = targetByKey.get(key);
+      if (target?.appliedSourceIds?.includes(quota.id)) {
+        await this.deleteById("usage_quotas", quota.id);
+        continue;
+      }
+      if (target) {
+        const appliedSourceIds = [...(target.appliedSourceIds ?? []), quota.id];
+        const used = target.used + quota.used;
+        await this.updateById("usage_quotas", target.id, { used, appliedSourceIds });
+        target.used = used;
+        target.appliedSourceIds = appliedSourceIds;
+      } else {
+        const created = await this.insert<UsageQuotaRecord>("usage_quotas", {
+          userId: toUserId,
+          dateKey: quota.dateKey,
+          kind: quota.kind,
+          used: quota.used,
+          appliedSourceIds: [quota.id]
+        });
+        targetByKey.set(key, created);
+      }
+      await this.deleteById("usage_quotas", quota.id);
+    }
+    return source.length;
+  }
+
+  private async listAll<T>(collection: CollectionName, query: Record<string, unknown>): Promise<T[]> {
+    const pageSize = 100;
+    const rows: T[] = [];
+    for (let skip = 0; skip < 5000; skip += pageSize) {
+      const result = await this.collection(collection).where(query).skip(skip).limit(pageSize).get();
+      const batch = ((result.data as unknown[]) ?? [])
+        .map((item) => this.normalize<T>(item))
+        .filter((item): item is T => Boolean(item));
+      rows.push(...batch);
+      if (batch.length < pageSize) break;
+    }
+    return rows;
+  }
+
+  private async deleteById(collection: CollectionName, id: string): Promise<void> {
+    const existing = await this.findOne<{ _id?: string; id: string }>(collection, { id });
+    if (!existing) return;
+    await this.collection(collection).doc(existing._id ?? existing.id).remove();
   }
 
   private collection(name: CollectionName) {

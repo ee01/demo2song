@@ -1,49 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 import { loadValidatedConfig } from "@demo2song/config";
+import { demoJobSchema, fullDraftSchema, fullJobSchema, idParamsSchema } from "@demo2song/contract";
 import type { SongRecord } from "@demo2song/data";
 import type { GenerateFullDraftResponse, SongBrief, SongPromptInput } from "@demo2song/shared";
 import { generateLyricsDraft } from "../services/minimax-lyrics.js";
 import { assertAndConsumeQuota } from "../services/quota.js";
 import { repository } from "../db.js";
 import { getObjectStorage } from "../storage/index.js";
+import { bindRoute } from "./bind.js";
 
 const config = loadValidatedConfig();
-
-const promptSchema = z.object({
-  style: z.string().min(1).max(120),
-  mood: z.string().max(80).optional(),
-  language: z.enum(["zh", "en", "ja", "ko", "auto"]).default("zh"),
-  vocalGender: z.enum(["female", "male", "mixed", "auto"]).default("auto"),
-  description: z.string().max(500).optional(),
-  lyricSeed: z.string().max(1000).optional()
-});
-
-const promptOverrideSchema = z
-  .object({
-    style: z.string().min(1).max(120).optional(),
-    mood: z.string().max(80).optional(),
-    language: z.enum(["zh", "en", "ja", "ko", "auto"]).optional(),
-    vocalGender: z.enum(["female", "male", "mixed", "auto"]).optional(),
-    description: z.string().max(500).optional(),
-    lyricSeed: z.string().max(1000).optional()
-  })
-  .partial();
-
-const demoJobSchema = z.object({
-  recordingId: z.string().min(1),
-  prompt: promptSchema
-});
-
-const fullJobSchema = z.object({
-  prompt: promptOverrideSchema.optional(),
-  title: z.string().max(80).optional(),
-  lyrics: z.string().max(3500).optional()
-});
-
-const fullDraftSchema = z.object({
-  prompt: promptOverrideSchema.optional()
-});
 
 function mergeSongPrompt(base: SongPromptInput, override: Partial<SongPromptInput> = {}): SongPromptInput {
   return {
@@ -85,7 +51,7 @@ async function toBrief(song: SongRecord): Promise<SongBrief> {
 }
 
 export async function songRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/songs/demo-jobs", async (request, reply) => {
+  bindRoute(app, "post", "/songs/demo-jobs", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
     if (!userId) {
       return reply.code(401).send({ error: "MISSING_USER" });
@@ -134,11 +100,11 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.code(201).send({ jobId: job.id, songId: song.id, status: job.status });
-  });
+  }, { body: demoJobSchema });
 
-  app.post("/songs/:id/full-draft", async (request, reply) => {
+  bindRoute(app, "post", "/songs/:id/full-draft", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const { id } = idParamsSchema.parse(request.params);
     if (!userId) {
       return reply.code(401).send({ error: "MISSING_USER" });
     }
@@ -158,11 +124,11 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       request.log.warn({ error }, "MiniMax lyrics generation failed");
       return reply.code(502).send({ error: "LYRICS_GENERATION_FAILED" });
     }
-  });
+  }, { params: idParamsSchema });
 
-  app.post("/songs/:id/full-jobs", async (request, reply) => {
+  bindRoute(app, "post", "/songs/:id/full-jobs", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const { id } = idParamsSchema.parse(request.params);
     if (!userId) {
       return reply.code(401).send({ error: "MISSING_USER" });
     }
@@ -223,7 +189,7 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       status: job.status,
       mode: config.defaultProvider === "mureka" ? "extend" : "regenerate"
     });
-  });
+  }, { params: idParamsSchema });
 
   app.get("/songs", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
@@ -246,9 +212,9 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ demos: demoSongs, fullSongs });
   });
 
-  app.get("/songs/:id", async (request, reply) => {
+  bindRoute(app, "get", "/songs/:id", async (request, reply) => {
     const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const { id } = idParamsSchema.parse(request.params);
     if (!userId) {
       return reply.code(401).send({ error: "MISSING_USER" });
     }
@@ -291,5 +257,5 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
     }
 
     return reply.send(detail);
-  });
+  }, { params: idParamsSchema });
 }

@@ -1,11 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
+import { wechatCodeSchema } from "@demo2song/contract";
 import { repository } from "../db.js";
 import { env } from "../env.js";
-
-const loginSchema = z.object({
-  code: z.string().min(1)
-});
+import { bindRoute } from "./bind.js";
 
 function createDevSession(code: string): { openid: string; session_key?: string } {
   return { openid: `dev_${code.slice(0, 64)}` };
@@ -41,11 +38,11 @@ async function exchangeWechatCode(code: string): Promise<{ openid: string; sessi
 }
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/auth/wechat-login", async (request, reply) => {
-    const body = loginSchema.parse(request.body);
+  bindRoute(app, "post", "/auth/wechat-login", async (request, reply) => {
+    const body = wechatCodeSchema.parse(request.body);
     const session = await exchangeWechatCode(body.code);
     const user = await repository.upsertUserByOpenId(session.openid, session.session_key);
 
     return reply.send({ userId: user.id });
-  });
+  }, { body: wechatCodeSchema });
 }
