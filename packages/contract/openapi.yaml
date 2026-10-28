@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: 随哼 API
   version: 1.0.0
-  description: 随哼 /v1 契约。账号接口（wechat-mp、wechat-app、apple、refresh、me）在 M2 实现；当前服务已提供同路径的既有资源，以及过渡登录 POST /v1/auth/wechat-login。
+  description: 随哼 /v1 契约。微信小程序登录、微信移动应用登录、刷新、退出和 /v1/me 已实现，两端登录命中同一个用户。Apple 登录、绑定合并和注销尚未实现。过渡登录 POST /v1/auth/wechat-login 仍返回 userId。
 servers:
   - url: https://api.demo2song.eexx.me
 tags:
@@ -22,11 +22,11 @@ tags:
     description: 无需登录
 components:
   securitySchemes:
-    userHeader:
-      type: apiKey
-      in: header
-      name: x-user-id
-      description: "过渡期与旧路由相同。T2.2 起 /v1 改为 Authorization: Bearer，此请求头仅保留到 LEGACY_HEADER_AUTH 关闭。"
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: /v1 访问令牌。旧路由在 LEGACY_HEADER_AUTH 开启时仍接受 x-user-id。
   schemas:
     OkResponse:
       type: object
@@ -763,7 +763,7 @@ paths:
         - auth
       summary: 退出登录
       security:
-        - userHeader: []
+        - bearerAuth: []
       responses:
         "204":
           description: 已退出
@@ -780,7 +780,7 @@ paths:
         - auth
       summary: 当前用户
       security:
-        - userHeader: []
+        - bearerAuth: []
       responses:
         "200":
           description: 当前用户
@@ -800,7 +800,7 @@ paths:
         - auth
       summary: 注销账号
       security:
-        - userHeader: []
+        - bearerAuth: []
       responses:
         "204":
           description: 已注销
@@ -817,7 +817,7 @@ paths:
         - auth
       summary: 绑定微信或 Apple
       security:
-        - userHeader: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -850,7 +850,7 @@ paths:
         - auth
       summary: 确认合并账号
       security:
-        - userHeader: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -883,7 +883,7 @@ paths:
         - recordings
       summary: 上传哼唱录音
       security:
-        - userHeader: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -916,7 +916,7 @@ paths:
         - songs
       summary: 提交 demo 生成
       security:
-        - userHeader: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -955,7 +955,7 @@ paths:
         - songs
       summary: 生成完整版歌词草稿
       security:
-        - userHeader: []
+        - bearerAuth: []
       parameters:
         - schema:
             type: string
@@ -1001,7 +1001,7 @@ paths:
         - songs
       summary: 提交完整版生成
       security:
-        - userHeader: []
+        - bearerAuth: []
       parameters:
         - schema:
             type: string
@@ -1053,7 +1053,7 @@ paths:
         - songs
       summary: 我的歌曲
       security:
-        - userHeader: []
+        - bearerAuth: []
       responses:
         "200":
           description: 歌曲列表
@@ -1074,7 +1074,7 @@ paths:
         - songs
       summary: 歌曲详情
       security:
-        - userHeader: []
+        - bearerAuth: []
       parameters:
         - schema:
             type: string
@@ -1108,7 +1108,7 @@ paths:
         - jobs
       summary: 登记完成通知
       security:
-        - userHeader: []
+        - bearerAuth: []
       parameters:
         - schema:
             type: string
@@ -1142,7 +1142,7 @@ paths:
         - jobs
       summary: 任务状态
       security:
-        - userHeader: []
+        - bearerAuth: []
       parameters:
         - schema:
             type: string

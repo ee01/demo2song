@@ -127,14 +127,17 @@ export type CreateSongJobInput = Omit<SongJobRecord, keyof BaseRecord>;
 export interface Demo2SongRepository {
   upsertUserByOpenId(openId: string, sessionKey?: string): Promise<UserRecord>;
   getUserById(id: string): Promise<UserRecord | null>;
+  findUserByOpenId(openId: string): Promise<UserRecord | null>;
   findIdentity(provider: IdentityProvider, subject: string): Promise<IdentityRecord | null>;
   findIdentityByUnionId(unionId: string): Promise<IdentityRecord | null>;
+  listIdentitiesByUnionId(unionId: string): Promise<IdentityRecord[]>;
   listIdentitiesForUser(userId: string): Promise<IdentityRecord[]>;
   createIdentity(input: Omit<IdentityRecord, keyof BaseRecord>): Promise<IdentityRecord>;
   updateIdentity(id: string, patch: Partial<IdentityRecord>): Promise<void>;
   createUser(input?: Partial<UserRecord>): Promise<UserRecord>;
   updateUser(id: string, patch: Partial<UserRecord>): Promise<void>;
   createSession(input: Omit<SessionRecord, keyof BaseRecord>): Promise<SessionRecord>;
+  findSessionById(id: string): Promise<SessionRecord | null>;
   findSessionByHash(hash: string): Promise<SessionRecord | null>;
   updateSession(id: string, patch: Partial<SessionRecord>): Promise<void>;
   revokeSessionsForUser(userId: string): Promise<void>;

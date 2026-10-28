@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { nanoid } from "nanoid";
 import { loadValidatedConfig } from "@demo2song/config";
+import { requireUser } from "../auth/require-user.js";
 import { repository } from "../db.js";
 import { getObjectStorage } from "../storage/index.js";
 
@@ -8,10 +9,8 @@ const config = loadValidatedConfig();
 
 export async function recordingRoutes(app: FastifyInstance): Promise<void> {
   app.post("/recordings", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
 
     const part = await request.file();
     if (!part) {

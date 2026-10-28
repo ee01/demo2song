@@ -11,7 +11,7 @@
 |---|---|---|---|
 | D1 | 仓库形态 | 同一 monorepo，新增 `apps/ios`、`apps/web-share`、`design/prototype`、`specs/`、`tools/harness` | v1 |
 | D2 | iOS 技术栈 | 原生 SwiftUI（iOS 17+，Swift 6），小程序继续 Taro；共享「意图层」而非 UI 代码 | v1 |
-| D3 | 账号打通 | **微信开放平台 unionid** 作为跨端合并键；Apple 登录用户可后续绑定微信，冲突时合并 | E 确认 |
+| D3 | 账号打通 | iOS 弹出微信登录，直接进入小程序原来的那条用户。作品、录音、配额不迁移、不复制。unionid 只用来认出同一个人。Apple 登录以后再绑到这个微信用户上 | E 确认，2026-10-28 |
 | D4 | UI 基准 | **全站一个大原型**（`design/prototype`），功能胶囊只引用其中的 screen/state | E 确认 |
 | D5 | 多端适配 | Feature Capsule + Harness（结构/文案/视觉三层比对 + Parity 报告） | v1 |
 | D6 | 本期范围 | iOS（不含 Android/Web App）；首版不收费（不接 IAP）；保留扩展位 | v1 假设，未被否定 |
@@ -21,7 +21,7 @@
 ## 1. 范围
 
 **本期交付（In）**
-1. 后端：签名鉴权、多身份账号 + unionid 合并、`/v1` 契约、预签名直传、SSE 进度、APNs/Live Activity 推送、公开分享 H5。
+1. 后端：签名鉴权、小程序与 iOS 共用同一个微信用户（不迁移作品）、`/v1` 契约、预签名直传、SSE 进度、APNs/Live Activity 推送、公开分享 H5。
 2. 小程序：切到 `/v1` + token 鉴权，接入 Harness（`data-ui` 锚点 + Fixture 模式）。
 3. 全站原型 + Harness MVP（golden / capture / diff / report）。
 4. iOS App：与小程序功能对齐 + Live Activity + App Intents + 微信分享，TestFlight → 上架。
@@ -86,7 +86,7 @@ demo2song/
 
 ---
 
-## 3. 账号与鉴权 Spec（unionid 方案）
+## 3. 账号与鉴权 Spec（同一个微信账号）
 
 ### 3.1 外部前置（E 负责，§9 有时间点）
 
@@ -101,7 +101,7 @@ demo2song/
 export type IdentityProvider = "wechat_mp" | "wechat_app" | "apple";
 
 export interface UserRecord extends BaseRecord {
-  openId?: string;            // 兼容字段：只读，迁移完成后删除
+  openId?: string;            // 只存小程序 openid。iOS 登录不写这个字段
   sessionKey?: string;        // 兼容字段
   displayName?: string;
   mergedInto?: string;        // 被合并后指向存活用户
@@ -193,19 +193,20 @@ interface MergeRequired { error: { code: "MERGE_REQUIRED"; params: {
 
 ```
 resolveWechat(provider, openid, unionid?):
-  1. idt = findIdentity(provider, openid)
-     → 命中：若 idt.unionId 为空且 unionid 有值则补写；return idt.userId
-  2. 若 unionid：u = findIdentityByUnionId(unionid)
-     → 命中：createIdentity(provider, openid, unionid, userId=u.userId)；return u.userId
-  3. 仅 wechat_mp：legacy = users.where(openId == openid)        # 未迁移的老用户
-     → 命中：createIdentity(wechat_mp, openid, unionid, legacy.id)；return legacy.id
-  4. user = createUser()；createIdentity(...)；return user.id
+  1. 已有 (provider, openid) 身份 → 补写 unionid。小程序登录时，若这个 unionid 还挂在别的用户上，把那一侧的身份和作品收回当前用户
+  2. provider 是 wechat_mp，且 users.openId 已存在 → 这就是原账号。挂上身份，同样把暂时挂在别处的同 unionid 数据收回来
+  3. unionid 已在某个身份上 → 把本次 openid 挂到那个 userId，不新建用户
+  4. 都没有 → 新建用户。小程序写入 users.openId；iOS 只建 wechat_app 身份，不把 App openid 写进 users.openId
+
+iOS 微信登录走 1 或 3，命中的是小程序那条用户。歌曲、录音、配额仍在原来的 userId 上。
 
 resolveApple(sub):
   idt = findIdentity("apple", sub) → 命中 return；否则新建 user + identity
 ```
 
 ### 3.6 绑定与合并
+
+主路径不产生第二个账号，也不弹出合并。iOS 微信登录直接进入小程序用户。下面只用于「先用 Apple 建了另一个用户，之后才绑到已有微信」（T2.7，尚未做）。
 
 - 场景 A：Apple 用户绑定微信 → 后端换 `unionid`：
   - unionid 无归属 → 直接给当前用户加身份；
@@ -221,11 +222,13 @@ resolveApple(sub):
   - 任一步失败：mergeLog → `failed`，重试从头再跑（每一步都可重复执行）。
 - 客户端 UI：合并确认 sheet，展示「将把当前账号的 N 首歌并入微信账号（M 首歌）」，二次确认后才调用 merge。
 
-### 3.7 老用户迁移
+### 3.7 同一份数据，不迁移
 
-- 一次性脚本 `packages/data/scripts/migrate-identities.ts`：为每个 `users.openId` 建 `wechat_mp` identity（无 unionId），支持 dry-run、可重入。
-- unionid 懒回填：老用户下次通过 `/v1/auth/wechat-mp` 登录时，按 §3.5 第 1 步补写。
-- 未打开过新版小程序的老用户没有 unionid → 在 iOS 用微信登录时会新建账号。**缓解**：iOS 登录页文案提示「已在小程序创作过？请先打开一次最新版小程序」；同时 `/v1/me/identities` 支持后续合并，数据不会丢。
+不写 `migrate-identities.ts`，不复制用户、作品或配额。小程序和 iOS 读的是同一套 `users` / `songs` / `recordings`。
+
+小程序 openid 和 iOS 移动应用 openid 不是同一个值。微信用 unionid 表示同一个人（开放平台绑定同一主体后，两端登录都会返回它）。登录当时把 unionid 写到已有的那条用户上：现在的 `/auth/wechat-login` 也会写，不用等小程序切到 Bearer。
+
+iOS 弹出微信登录后，用 unionid 找到这条用户，之后的请求都带着它的 userId。`users.openId` 继续只存小程序 openid。
 
 ### 3.8 注销（`DELETE /v1/me`）
 
@@ -285,7 +288,7 @@ screens:
       ios: { view: FullComposeView }
   - id: login
     title: 登录
-    states: [idle, signing-in, error, merge-required]
+    states: [idle, signing-in, error, merge-required]   # merge-required 仅 Apple 冲突（T2.7）；微信登录不走合并
     platforms:
       mp-weixin: n/a                       # 小程序静默登录
       ios: { view: LoginView }
@@ -488,6 +491,12 @@ apps/ios/
 > 编号 = 建议的子 issue。**依赖** 列出必须先完成的任务。每个任务都要满足 §10 的通用 DoD。
 > 角色：`BE` 后端 · `MP` 小程序 · `PX` 原型/设计工程 · `HX` Harness · `IOS` iOS · `E` 需要你本人操作。
 
+### 实现进度（2026-10-28）
+
+已落地：T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3。T2.4 取消（不迁数据，登录直接命中原用户）。
+
+尚未开始：T2.5–T2.9（T2.6 中的微信 App 登录已随 T2.3 完成，剩下 Apple）、T3.1–T3.8、T4.1–T4.7、T5.1–T5.13、T6.1–T6.4，以及外部前置 X1–X6。
+
 ### 9.0 外部前置（E）
 
 | ID | 事项 | 最晚需要的时间点 |
@@ -515,10 +524,10 @@ apps/ios/
 |---|---|---|---|---|
 | T2.1 | BE | — | 数据模型与 repository 方法（§3.2），memory + cloudbase 双实现；`init-cloudbase.ts` 加集合 | `packages/data` 单测覆盖全部新方法 |
 | T2.2 | BE | T1.2, T2.1 | `jose` JWT、`require-user` preHandler、refresh 轮换与重放检测、`LEGACY_HEADER_AUTH`；env 增 `JWT_SECRET` | 单测：过期/篡改/重放/吊销/mergedInto 均 401 |
-| T2.3 | BE | T2.2 | `/v1/auth/wechat-mp`（含 unionid）+ 解析算法 §3.5 + `/v1/auth/refresh` `/logout` `/v1/me` | 单测覆盖 §3.5 四条分支 |
-| T2.4 | BE | T2.1 | 迁移脚本 `migrate-identities.ts`（dry-run、可重入） | 对 memory 数据跑两次结果一致；生产 dry-run 报告 |
+| T2.3 | BE | T2.2 | `/v1/auth/wechat-mp`、`/v1/auth/wechat-app`（同一 userId）+ 解析算法 §3.5 + `/v1/auth/refresh` `/logout` `/v1/me`；现有 `/auth/wechat-login` 同时写入 unionid | 单测覆盖 §3.5 四条分支；iOS 登录后作品仍在原用户上 |
+| T2.4 | — | — | **取消。** 不做 `migrate-identities.ts`。两端共用同一条用户和同一批作品（§3.7） | 小程序老用户用另一个 openid 的微信 App 登录，userId 不变 |
 | T2.5 | MP | T2.3, T1.5 | 小程序改用 `/v1` + Bearer：token 存 Storage、自动刷新、401 重试一次；移除 `x-user-id` | 本地 E2E（`Agent.md` 流程）全通；发版 |
-| T2.6 | BE | T2.3 | `/v1/auth/wechat-app`、`/v1/auth/apple`（Apple JWKS，`aud`=Bundle ID）；env 增 `WECHAT_OPEN_APP_ID/SECRET`、`APPLE_BUNDLE_ID` | 单测（mock JWKS / mock 微信接口） |
+| T2.6 | BE | T2.3 | `/v1/auth/apple`（Apple JWKS，`aud`=Bundle ID）。微信 App 登录已在 T2.3 完成。env 增 `APPLE_BUNDLE_ID`（`WECHAT_OPEN_APP_ID/SECRET` 已预留） | 单测（mock JWKS） |
 | T2.7 | BE | T2.6 | `/v1/me/identities`、`/v1/me/merge`（§3.6），`reassignUserData` | 单测：无冲突绑定、两种合并、进行中任务拒绝、merge 重入幂等、配额累加 |
 | T2.8 | BE | T2.6 | `DELETE /v1/me`（§3.8）+ worker 定时清理 | 单测；Apple revoke 用 mock |
 | T2.9 | BE | T2.5 发版 ≥ 2 周 | 生产 `LEGACY_HEADER_AUTH=false` | 伪造 `x-user-id` 请求 → 401 |
@@ -555,7 +564,7 @@ apps/ios/
 | T5.1 | IOS | T1.1, T1.3, T1.4, X2 | XcodeGen 工程、SPM 模块、`harness codegen` 接入 Swift 生成物、`UIID.swift` 生成 | `xcodebuild build` 通过；生成物无手改（CI diff 校验） |
 | T5.2 | IOS | T5.1 | `D2SDesign` 组件库 + 组件截图测试 | 每个组件对照原型 `components.css` 截图 |
 | T5.3 | IOS | T5.1 | `D2SCore`：Keychain AuthStore、APIClient（自动刷新）、FixtureTransport、SSEClient | 单测 |
-| T5.4 | IOS | T5.3, T2.6, X5 | Login：Sign in with Apple + 微信登录；`login.merge-required` 流程 | 真机两种登录可用 |
+| T5.4 | IOS | T5.3, T2.6, X5 | Login：微信登录后即小程序原账号；Sign in with Apple 绑到同一用户，仅冲突时走 `login.merge-required` | 真机微信登录看到原有作品 |
 | T5.5 | IOS | T5.3 | `D2SAudio`：录音（AVAudioEngine、电平、锁定）、播放（NowPlaying、远程控制、后台） | 真机锁屏可控制播放 |
 | T5.6 | IOS | T5.5, T4.1 | Record + Compose + 上传 | 对应胶囊 `verify` 通过 |
 | T5.7 | IOS | T5.6, T4.2 | Generating（SSE）+ DemoResult | `verify` 通过 |
@@ -661,8 +670,8 @@ flowchart LR
 
 | 风险 | 影响 | 应对 |
 |---|---|---|
-| 开放平台审核周期 | unionid / iOS 微信登录延后 | M2 先上 token 鉴权（不依赖 unionid）；unionid 懒回填；iOS 先以 Apple 登录开发 |
-| 老用户从未打开新版小程序 | iOS 微信登录生成新账号 | 登录页提示 + 后续绑定合并（§3.6/3.7） |
+| 开放平台尚未绑定 | 两端拿不到 unionid，iOS 认不出小程序老用户 | X1 在 iOS 微信登录上线前完成。绑定之后，现有小程序登录会把 unionid 写到原用户上 |
+| 绑定前只打开了 iOS | 当时库里没有 unionid，会先有一条只有 App 身份的用户 | 他下次小程序登录按 openId 回到原用户，并把这条 App 身份和期间产生的作品收回去。不跑迁移脚本，登录页也不做提示 |
 | CloudBase 无跨集合事务 | 合并中途失败 | merge_logs + 每步幂等 + 可重入 |
 | 原型单体变大 | 加载慢、AI 改动冲突 | 源码按 screen 拆分；防冲突规则（§4.6）；dist 只由构建生成 |
 | 视觉比对误报 | Harness 噪声大、agent 反复返工 | 结构/文案硬约束，视觉软约束 + AI 评审；返工上限 3 轮后交人工 |

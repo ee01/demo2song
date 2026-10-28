@@ -55,13 +55,22 @@ export class CloudBaseRepository implements Demo2SongRepository {
     return this.findOne<UserRecord>("users", { id });
   }
 
+  async findUserByOpenId(openId: string): Promise<UserRecord | null> {
+    return this.findOne<UserRecord>("users", { openId });
+  }
+
   async findIdentity(provider: IdentityProvider, subject: string): Promise<IdentityRecord | null> {
     return this.findOne<IdentityRecord>("identities", { provider, subject });
   }
 
   async findIdentityByUnionId(unionId: string): Promise<IdentityRecord | null> {
-    if (!unionId) return null;
-    return this.findOne<IdentityRecord>("identities", { unionId });
+    const matches = await this.listIdentitiesByUnionId(unionId);
+    return matches[0] ?? null;
+  }
+
+  async listIdentitiesByUnionId(unionId: string): Promise<IdentityRecord[]> {
+    if (!unionId) return [];
+    return this.listAll<IdentityRecord>("identities", { unionId });
   }
 
   async listIdentitiesForUser(userId: string): Promise<IdentityRecord[]> {
@@ -88,6 +97,10 @@ export class CloudBaseRepository implements Demo2SongRepository {
 
   async updateUser(id: string, patch: Partial<UserRecord>): Promise<void> {
     await this.updateById("users", id, patch);
+  }
+
+  async findSessionById(id: string): Promise<SessionRecord | null> {
+    return this.findOne<SessionRecord>("sessions", { id });
   }
 
   async createSession(input: Omit<SessionRecord, keyof BaseRecord>): Promise<SessionRecord> {

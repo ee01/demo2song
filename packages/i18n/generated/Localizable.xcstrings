@@ -1380,6 +1380,66 @@
           }
         }
       }
+    },
+    "errors.TOKEN_EXPIRED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录已过期，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.TOKEN_INVALID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录状态无效，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.SESSION_REVOKED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录已退出，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.SESSION_REPLAYED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录状态已失效，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.ACCOUNT_UNAVAILABLE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个账号已停用"
+          }
+        }
+      }
+    },
+    "errors.WECHAT_LOGIN_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "微信登录失败，请重试"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -1,48 +1,74 @@
 import type { FastifyInstance } from "fastify";
-import { wechatCodeSchema } from "@demo2song/contract";
+import { refreshRequestSchema, wechatCodeSchema } from "@demo2song/contract";
 import { repository } from "../db.js";
-import { env } from "../env.js";
+import { requireUser } from "../auth/require-user.js";
+import { resolveWechat } from "../auth/resolve-user.js";
+import { issueSession, readMe, refreshSession } from "../auth/session.js";
+import { AuthError, sendAuthFailure } from "../auth/errors.js";
+import { exchangeWechatAppCode, exchangeWechatMpCode } from "../auth/wechat.js";
 import { bindRoute } from "./bind.js";
-
-function createDevSession(code: string): { openid: string; session_key?: string } {
-  return { openid: `dev_${code.slice(0, 64)}` };
-}
-
-async function exchangeWechatCode(code: string): Promise<{ openid: string; session_key?: string }> {
-  if (!env.WECHAT_APP_ID || !env.WECHAT_APP_SECRET) {
-    return createDevSession(code);
-  }
-
-  const url = new URL("https://api.weixin.qq.com/sns/jscode2session");
-  url.searchParams.set("appid", env.WECHAT_APP_ID);
-  url.searchParams.set("secret", env.WECHAT_APP_SECRET);
-  url.searchParams.set("js_code", code);
-  url.searchParams.set("grant_type", "authorization_code");
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Wechat login failed: ${response.status}`);
-    }
-    const data = (await response.json()) as { openid?: string; session_key?: string; errmsg?: string; errcode?: number };
-    if (!data.openid) {
-      throw new Error(data.errmsg || `Wechat login did not return openid: ${data.errcode ?? "unknown"}`);
-    }
-    return { openid: data.openid, session_key: data.session_key };
-  } catch (error) {
-    if (!env.WECHAT_LOGIN_STRICT) {
-      return createDevSession(code);
-    }
-    throw error;
-  }
-}
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   bindRoute(app, "post", "/auth/wechat-login", async (request, reply) => {
     const body = wechatCodeSchema.parse(request.body);
-    const session = await exchangeWechatCode(body.code);
-    const user = await repository.upsertUserByOpenId(session.openid, session.session_key);
-
-    return reply.send({ userId: user.id });
+    try {
+      const identity = await exchangeWechatMpCode(body.code);
+      const userId = await resolveWechat(repository, "wechat_mp", identity.openid, identity.unionid);
+      if (identity.sessionKey) await repository.updateUser(userId, { sessionKey: identity.sessionKey });
+      return reply.send({ userId });
+    } catch (error) {
+      request.log.warn({ err: error }, "wechat login failed");
+      return sendAuthFailure(reply, "WECHAT_LOGIN_FAILED");
+    }
   }, { body: wechatCodeSchema });
+
+  bindRoute(app, "post", "/auth/wechat-mp", async (request, reply) => {
+    const body = wechatCodeSchema.parse(request.body);
+    try {
+      const identity = await exchangeWechatMpCode(body.code);
+      const userId = await resolveWechat(repository, "wechat_mp", identity.openid, identity.unionid);
+      if (identity.sessionKey) await repository.updateUser(userId, { sessionKey: identity.sessionKey });
+      return reply.send(await issueSession(userId, "mp"));
+    } catch (error) {
+      request.log.warn({ err: error }, "wechat mp login failed");
+      return sendAuthFailure(reply, "WECHAT_LOGIN_FAILED");
+    }
+  }, { body: wechatCodeSchema });
+
+  bindRoute(app, "post", "/auth/wechat-app", async (request, reply) => {
+    const body = wechatCodeSchema.parse(request.body);
+    try {
+      const identity = await exchangeWechatAppCode(body.code);
+      const userId = await resolveWechat(repository, "wechat_app", identity.openid, identity.unionid);
+      return reply.send(await issueSession(userId, "ios"));
+    } catch (error) {
+      request.log.warn({ err: error }, "wechat app login failed");
+      return sendAuthFailure(reply, "WECHAT_LOGIN_FAILED");
+    }
+  }, { body: wechatCodeSchema });
+
+  bindRoute(app, "post", "/auth/refresh", async (request, reply) => {
+    const body = refreshRequestSchema.parse(request.body);
+    try {
+      return reply.send(await refreshSession(body.refreshToken));
+    } catch (error) {
+      const code = error instanceof AuthError ? error.code : "TOKEN_INVALID";
+      return sendAuthFailure(reply, code);
+    }
+  }, { body: refreshRequestSchema });
+
+  bindRoute(app, "post", "/auth/logout", async (request, reply) => {
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
+    if (request.authSessionId) {
+      await repository.updateSession(request.authSessionId, { revokedAt: new Date().toISOString() });
+    }
+    return reply.code(204).send();
+  });
+
+  bindRoute(app, "get", "/me", async (request, reply) => {
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
+    return reply.send(await readMe(userId));
+  });
 }

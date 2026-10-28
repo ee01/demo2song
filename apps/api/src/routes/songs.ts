@@ -5,6 +5,7 @@ import type { SongRecord } from "@demo2song/data";
 import type { GenerateFullDraftResponse, SongBrief, SongPromptInput } from "@demo2song/shared";
 import { generateLyricsDraft } from "../services/minimax-lyrics.js";
 import { assertAndConsumeQuota } from "../services/quota.js";
+import { requireUser } from "../auth/require-user.js";
 import { repository } from "../db.js";
 import { getObjectStorage } from "../storage/index.js";
 import { bindRoute } from "./bind.js";
@@ -52,10 +53,8 @@ async function toBrief(song: SongRecord): Promise<SongBrief> {
 
 export async function songRoutes(app: FastifyInstance): Promise<void> {
   bindRoute(app, "post", "/songs/demo-jobs", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
 
     const body = demoJobSchema.parse(request.body);
     const recording = await repository.findRecordingForUser(body.recordingId, userId);
@@ -103,11 +102,9 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
   }, { body: demoJobSchema });
 
   bindRoute(app, "post", "/songs/:id/full-draft", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
     const { id } = idParamsSchema.parse(request.params);
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
 
     const parentSong = await repository.findReadyDemoSongForUser(id, userId);
     if (!parentSong) {
@@ -127,11 +124,9 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
   }, { params: idParamsSchema });
 
   bindRoute(app, "post", "/songs/:id/full-jobs", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
     const { id } = idParamsSchema.parse(request.params);
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
     if (!config.features.enableExtendSong) {
       return reply.code(409).send({ error: "FULL_SONG_DISABLED" });
     }
@@ -192,10 +187,8 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
   }, { params: idParamsSchema });
 
   app.get("/songs", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
 
     const songs = await repository.listSongsForUser(userId);
     const demoSongs: SongBrief[] = [];
@@ -213,11 +206,9 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
   });
 
   bindRoute(app, "get", "/songs/:id", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
     const { id } = idParamsSchema.parse(request.params);
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
 
     const song = await repository.findSongForUser(id, userId);
     if (!song) {

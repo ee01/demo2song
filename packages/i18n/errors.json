@@ -15,5 +15,11 @@
   "VALIDATION_ERROR": "提交的内容有误",
   "INTERNAL_ERROR": "服务暂时不可用，请稍后重试",
   "MERGE_REQUIRED": "这个微信已经有随哼账号，需要合并后才能继续",
-  "JOB_IN_PROGRESS": "还有歌曲正在生成，完成后再合并账号"
+  "JOB_IN_PROGRESS": "还有歌曲正在生成，完成后再合并账号",
+  "TOKEN_EXPIRED": "登录已过期，请重新登录",
+  "TOKEN_INVALID": "登录状态无效，请重新登录",
+  "SESSION_REVOKED": "登录已退出，请重新登录",
+  "SESSION_REPLAYED": "登录状态已失效，请重新登录",
+  "ACCOUNT_UNAVAILABLE": "这个账号已停用",
+  "WECHAT_LOGIN_FAILED": "微信登录失败，请重试"
 }

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { SongBrief } from "@demo2song/shared";
+import { issueSession } from "./auth/session.js";
 import { buildApp } from "./app.js";
 import { repository } from "./db.js";
 
@@ -169,7 +170,9 @@ describe("api app", () => {
 
   it("mirrors routes under /v1 and wraps errors without changing legacy responses", async () => {
     const app = await buildApp();
-    const userId = `user-${randomUUID()}`;
+    const user = await repository.createUser();
+    const userId = user.id;
+    const bearer = { authorization: `Bearer ${(await issueSession(userId, "mp")).accessToken}` };
     const legacyMissing = await app.inject({ method: "GET", url: "/songs" });
     expect(legacyMissing.statusCode).toBe(401);
     expect(legacyMissing.json()).toEqual({ error: "MISSING_USER" });
@@ -177,6 +180,14 @@ describe("api app", () => {
     const v1Missing = await app.inject({ method: "GET", url: "/v1/songs" });
     expect(v1Missing.statusCode).toBe(401);
     expect(v1Missing.json()).toEqual({ error: { code: "MISSING_USER" } });
+
+    const headerOnly = await app.inject({
+      method: "GET",
+      url: "/v1/songs",
+      headers: { "x-user-id": userId }
+    });
+    expect(headerOnly.statusCode).toBe(401);
+    expect(headerOnly.json()).toEqual({ error: { code: "MISSING_USER" } });
 
     const recording = await repository.createRecording({
       userId,
@@ -187,7 +198,7 @@ describe("api app", () => {
     const created = await app.inject({
       method: "POST",
       url: "/v1/songs/demo-jobs",
-      headers: { "x-user-id": userId },
+      headers: bearer,
       payload: {
         recordingId: recording.id,
         prompt: { style: "warm indie pop", language: "zh", vocalGender: "auto" }
@@ -199,7 +210,7 @@ describe("api app", () => {
     const invalid = await app.inject({
       method: "POST",
       url: "/v1/songs/demo-jobs",
-      headers: { "x-user-id": userId },
+      headers: bearer,
       payload: {}
     });
     expect(invalid.statusCode).toBe(400);
@@ -221,7 +232,7 @@ describe("api app", () => {
     const missingSong = await app.inject({
       method: "GET",
       url: "/v1/songs/missing",
-      headers: { "x-user-id": userId }
+      headers: bearer
     });
     expect(missingSong.statusCode).toBe(404);
     expect(missingSong.json()).toEqual({ error: { code: "SONG_NOT_FOUND" } });

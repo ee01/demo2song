@@ -55,6 +55,10 @@ export class InMemoryRepository implements Demo2SongRepository {
     return (this.data.users.get(id) as UserRecord | undefined) ?? null;
   }
 
+  async findUserByOpenId(openId: string): Promise<UserRecord | null> {
+    return ([...this.data.users.values()] as UserRecord[]).find((user) => user.openId === openId) ?? null;
+  }
+
   async findIdentity(provider: IdentityProvider, subject: string): Promise<IdentityRecord | null> {
     return (
       ([...this.data.identities.values()] as IdentityRecord[]).find(
@@ -64,10 +68,13 @@ export class InMemoryRepository implements Demo2SongRepository {
   }
 
   async findIdentityByUnionId(unionId: string): Promise<IdentityRecord | null> {
-    if (!unionId) return null;
-    return (
-      ([...this.data.identities.values()] as IdentityRecord[]).find((identity) => identity.unionId === unionId) ?? null
-    );
+    const matches = await this.listIdentitiesByUnionId(unionId);
+    return matches[0] ?? null;
+  }
+
+  async listIdentitiesByUnionId(unionId: string): Promise<IdentityRecord[]> {
+    if (!unionId) return [];
+    return ([...this.data.identities.values()] as IdentityRecord[]).filter((identity) => identity.unionId === unionId);
   }
 
   async listIdentitiesForUser(userId: string): Promise<IdentityRecord[]> {
@@ -95,6 +102,10 @@ export class InMemoryRepository implements Demo2SongRepository {
 
   async updateUser(id: string, patch: Partial<UserRecord>): Promise<void> {
     this.update("users", id, patch);
+  }
+
+  async findSessionById(id: string): Promise<SessionRecord | null> {
+    return (this.data.sessions.get(id) as SessionRecord | undefined) ?? null;
   }
 
   async createSession(input: Omit<SessionRecord, keyof import("./types.js").BaseRecord>): Promise<SessionRecord> {

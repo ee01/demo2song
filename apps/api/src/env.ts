@@ -9,7 +9,21 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().int().positive().default(3100),
   WECHAT_APP_ID: z.string().optional(),
   WECHAT_APP_SECRET: z.string().optional(),
-  WECHAT_LOGIN_STRICT: z.coerce.boolean().default(false),
+  WECHAT_OPEN_APP_ID: z.string().optional(),
+  WECHAT_OPEN_APP_SECRET: z.string().optional(),
+  WECHAT_LOGIN_STRICT: z.preprocess((value) => {
+    if (value === undefined || value === "") return false;
+    if (value === true || value === "true" || value === "1") return true;
+    if (value === false || value === "false" || value === "0") return false;
+    return value;
+  }, z.boolean()),
+  JWT_SECRET: z.string().optional(),
+  LEGACY_HEADER_AUTH: z.preprocess((value) => {
+    if (value === undefined || value === "") return true;
+    if (value === true || value === "true" || value === "1") return true;
+    if (value === false || value === "false" || value === "0") return false;
+    return value;
+  }, z.boolean()),
   WECHAT_SUBSCRIBE_TEMPLATE_ID: z.string().optional(),
   COS_SECRET_ID: z.string().optional(),
   COS_SECRET_KEY: z.string().optional(),
@@ -22,4 +36,18 @@ const envSchema = z.object({
   MUREKA_API_KEY: z.string().optional()
 });
 
-export const env = envSchema.parse(process.env);
+const parsed = envSchema.parse(process.env);
+const DEV_JWT_SECRET = "dev-only-jwt-secret-not-for-production";
+
+function resolveJwtSecret(value: string | undefined): string {
+  if (value && value.length >= 32) return value;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be at least 32 characters");
+  }
+  return DEV_JWT_SECRET;
+}
+
+export const env = {
+  ...parsed,
+  JWT_SECRET: resolveJwtSecret(parsed.JWT_SECRET)
+};

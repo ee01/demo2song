@@ -35,14 +35,14 @@ import {
 
 const registry = new OpenAPIRegistry();
 
-registry.registerComponent("securitySchemes", "userHeader", {
-  type: "apiKey",
-  in: "header",
-  name: "x-user-id",
-  description: "过渡期与旧路由相同。T2.2 起 /v1 改为 Authorization: Bearer，此请求头仅保留到 LEGACY_HEADER_AUTH 关闭。"
+registry.registerComponent("securitySchemes", "bearerAuth", {
+  type: "http",
+  scheme: "bearer",
+  bearerFormat: "JWT",
+  description: "/v1 访问令牌。旧路由在 LEGACY_HEADER_AUTH 开启时仍接受 x-user-id。"
 });
 
-const secured = [{ userHeader: [] }];
+const secured = [{ bearerAuth: [] }];
 
 function jsonBody(schema: ZodTypeAny) {
   return {
@@ -422,7 +422,7 @@ export function createOpenApiDocument(): Record<string, unknown> {
       title: "随哼 API",
       version: "1.0.0",
       description:
-        "随哼 /v1 契约。账号接口（wechat-mp、wechat-app、apple、refresh、me）在 M2 实现；当前服务已提供同路径的既有资源，以及过渡登录 POST /v1/auth/wechat-login。"
+        "随哼 /v1 契约。微信小程序登录、微信移动应用登录、刷新、退出和 /v1/me 已实现，两端登录命中同一个用户。Apple 登录、绑定合并和注销尚未实现。过渡登录 POST /v1/auth/wechat-login 仍返回 userId。"
     },
     servers: [{ url: "https://api.demo2song.eexx.me" }],
     tags: [
