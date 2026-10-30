@@ -12,3 +12,5 @@
 - 已尝试实机路径：读取现有证书/profile与设备匹配，隔离离线硬件包完成签名校验；安装遇到设备锁屏，等待用户解锁。当前未运行真机录音/播放验收。
 
 - 交付：LFS金图对象已上传；首次Git push因workflow scope被拒，CI改交付模板后重推。手机仍报告passcodeRequired=true。
+
+- 最终交付：PR #2 已创建，代码及LFS推送成功；本机项目 ios/device-testing 分支已同步并生成Xcode工程。53个TS测试+2个Harness测试、6个Swift核心测试、Debug/Release设备与Debug模拟器编译、HTTP E2E通过。设备安装仅因锁屏阻塞，未运行真机业务或UI验收。
