@@ -19,12 +19,13 @@
 | `harness codegen` 重跑 | 与提交产物无差异 |
 | 生产 fixture 剔除检查 | 小程序产物、iOS Release 二进制未包含 fixture 凭证标记 |
 | 离线硬件包签名 | 使用本机已有且覆盖手机的描述文件，独立 Bundle ID，`codesign --verify --deep --strict` 通过 |
-| 真机安装 | 首次尝试因手机锁屏失败（kAMDMobileImageMounterDeviceLocked）；随后读取仍为 passcodeRequired=true，未重复安装 |
+| 真机安装 | 用户解锁后 devicectl 安装成功，Bundle ID `me.eexx.suiheng.hardwaretest` |
+| 真机启动 | devicectl 启动成功；随后查询确认主 App 与 Widget 扩展进程在运行 |
 
-手机已连接并配对、开发者模式启用；系统报告 iOS 27.2。本机 Xcode 16.4，模拟器 runtime 下载失败。当前没有实际运行 XCUITest、手机录放音、真实微信/Apple/APNs、Universal Link 或两端视觉对齐；`specs/parity.yaml` 保持 unverified。
+手机已连接并配对、开发者模式启用；系统报告 iOS 27.2。本机 Xcode 16.4，模拟器 runtime 下载失败。已完成实际装机与启动检查；当前没有实际运行 XCUITest、手机录放音、真实微信/Apple/APNs、Universal Link 或两端视觉对齐；`specs/parity.yaml` 保持 unverified。
 
 离线包“随哼硬件测试”自动使用独立内存 fixture 会话，允许先做真实麦克风/电平/草稿/试听/锁屏控制测试，不含真实账号。完整业务签名需要支持 Apple/Push/Associated Domains 的应用配置与描述文件，真实云端需另行配置凭据和域名。
 
 CI 未启用：当前 GitHub OAuth 缺少 workflow scope，首次推送被拒；CI 改以 `tools/harness/ci/multi-client.yml` 模板交付后推送成功。不存在“CI已通过”的结论。
 
-当前继续条件：手机解锁并保持屏幕常亮后重试安装；如 DDI 仍报兼容性错误，再升级到支持设备系统的 Xcode。不要向评论发送手机密码或服务端私钥。
+当前可直接在手机打开“随哼硬件测试”，进行声纹授权、麦克风权限、6–60秒录音、上滑锁定、草稿恢复、试听及锁屏控制的人工验收。本次安装与启动已通过，没有再现解锁前的 DDI 错误。

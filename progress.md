@@ -14,3 +14,5 @@
 - 交付：LFS金图对象已上传；首次Git push因workflow scope被拒，CI改交付模板后重推。手机仍报告passcodeRequired=true。
 
 - 最终交付：PR #2 已创建，代码及LFS推送成功；本机项目 ios/device-testing 分支已同步并生成Xcode工程。53个TS测试+2个Harness测试、6个Swift核心测试、Debug/Release设备与Debug模拟器编译、HTTP E2E通过。设备安装仅因锁屏阻塞，未运行真机业务或UI验收。
+
+- 用户回复“解锁了”后恢复装机：读取 passcodeRequired=false；devicectl安装 me.eexx.suiheng.hardwaretest 成功，启动成功；随后查询主App和Widget扩展进程仍在运行。已解除锁屏安装阻塞，可进入人工硬件测试；未代替用户确认麦克风/录放音行为。

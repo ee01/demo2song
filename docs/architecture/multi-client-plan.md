@@ -501,7 +501,7 @@ M1、T2.1–T2.3 已由 `feat/m1-foundation` 接入。T2.4 取消，仍然共用
 | T2.9 | 保留生产兼容开关 | 必须满足小程序发版满两周，不提前关闭 |
 | M3 | 11屏原型、10组fixture、golden/交互验收、codegen/flow/UIID、capture/diff/report/verify骨架与CLI、CI模板（待启用）；生产包剔除fixture | 原型需E评审；小程序query状态覆盖与全量锚点仍需补齐；真实两端采集/视觉对齐未通过；视觉评审目前为rubric，不自动调用agent |
 | T4.1–T4.7 | m4a直传与HEAD校验、SSE、订阅/设备、APNs/Live Activity notifier、批量曲库、分享H5/AASA构建、ID3 AI标签 | 云端凭据/域名部署、真实APNs、微信开放标签、50首P95基准仍待外部环境与专项验收 |
-| T5.1–T5.13 | XcodeGen/SPM/官方Swift生成客户端；SwiftUI登录、录音、AAC草稿、试听/锁屏、创作/歌词/曲库、绑定/合并/注销；官方微信SDK、系统/微信分享、Live Activity、Widget/Control/App Intent | 设备与模拟器SDK编译通过；尚未安装手机或运行XCUITest；组件截图、全状态fixture与视觉对齐、微信/推送/硬件验收仍待真机与runtime |
+| T5.1–T5.13 | XcodeGen/SPM/官方Swift生成客户端；SwiftUI登录、录音、AAC草稿、试听/锁屏、创作/歌词/曲库、绑定/合并/注销；官方微信SDK、系统/微信分享、Live Activity、Widget/Control/App Intent | 设备与模拟器SDK编译通过；已完成离线硬件包真机安装与启动，尚未运行XCUITest；组件截图、全状态fixture与视觉对齐、微信/推送/硬件验收仍待真机与runtime |
 | T6.1 | 隐私清单初稿、麦克风用途与本地网络文案 | 需结合实际部署/SDK数据行为复核 |
 | T6.2–T6.4 / X1–X6 | 真机配置模板与验收手册 | 外部账号/标识/密钥/域名/资质由E确认；未执行真实部署、TestFlight或提审 |
 

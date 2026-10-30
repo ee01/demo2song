@@ -111,4 +111,4 @@ xcrun devicectl device install app --device PHONE_UDID .harness/hardware-test/Su
 
 脚本只使用本机已存在且覆盖指定手机的开发证书/描述文件，不创建门户资源。产物使用独立 Bundle ID `me.eexx.suiheng.hardwaretest`，显示名“随哼硬件测试”，采用不含推送/Apple登录/Associated Domains的测试签名；Debug 内存 fixture 会话自动启用，顶部显示离线测试标识。此包不能验收真实登录、云端生成或推送，也不用于发布。
 
-安装时手机必须解锁且信任电脑。此轮已签名并通过 `codesign --verify --deep --strict`；首次安装尝试被设备锁屏阻止，未声称已经装机。若解锁后 DDI 仍不兼容，需要使用支持设备系统版本的 Xcode，不应把安装失败当作编译失败。
+安装时手机必须解锁且信任电脑。此轮已签名并通过 `codesign --verify --deep --strict`。首次安装被设备锁屏阻止；用户解锁后安装与启动均成功，随后查询确认主 App 和 Widget 扩展进程在运行。现在可直接在手机打开“随哼硬件测试”。麦克风、录放音与锁屏行为仍需人工操作验收。
