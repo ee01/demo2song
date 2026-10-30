@@ -1,0 +1,58 @@
+[
+  {
+    "id": "login.nav",
+    "text": "随哼我的作品",
+    "box": {
+      "x": 24,
+      "y": 24,
+      "width": 342,
+      "height": 22,
+      "top": 24,
+      "right": 366,
+      "bottom": 46,
+      "left": 24
+    }
+  },
+  {
+    "id": "login.title",
+    "text": "随哼",
+    "box": {
+      "x": 24,
+      "y": 70,
+      "width": 342,
+      "height": 29,
+      "top": 70,
+      "right": 366,
+      "bottom": 99,
+      "left": 24
+    }
+  },
+  {
+    "id": "login.wechat",
+    "text": "微信登录",
+    "box": {
+      "x": 24,
+      "y": 156.59375,
+      "width": 342,
+      "height": 54,
+      "top": 156.59375,
+      "right": 366,
+      "bottom": 210.59375,
+      "left": 24
+    }
+  },
+  {
+    "id": "login.apple",
+    "text": "通过 Apple 登录",
+    "box": {
+      "x": 24,
+      "y": 226.59375,
+      "width": 342,
+      "height": 54,
+      "top": 226.59375,
+      "right": 366,
+      "bottom": 280.59375,
+      "left": 24
+    }
+  }
+]

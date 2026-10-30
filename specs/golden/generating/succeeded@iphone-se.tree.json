@@ -1,0 +1,44 @@
+[
+  {
+    "id": "generating.nav",
+    "text": "随哼我的作品",
+    "box": {
+      "x": 24,
+      "y": 24,
+      "width": 327,
+      "height": 22,
+      "top": 24,
+      "right": 351,
+      "bottom": 46,
+      "left": 24
+    }
+  },
+  {
+    "id": "generating.title",
+    "text": "正在为你创作",
+    "box": {
+      "x": 24,
+      "y": 70,
+      "width": 327,
+      "height": 29,
+      "top": 70,
+      "right": 351,
+      "bottom": 99,
+      "left": 24
+    }
+  },
+  {
+    "id": "generating.status",
+    "text": "排队中，可离开此页面AI 正在编曲生成失败，请重新尝试歌曲已完成",
+    "box": {
+      "x": 24,
+      "y": 115,
+      "width": 327,
+      "height": 89.59375,
+      "top": 115,
+      "right": 351,
+      "bottom": 204.59375,
+      "left": 24
+    }
+  }
+]

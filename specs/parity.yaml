@@ -1,0 +1,172 @@
+generatedBy: harness report
+results:
+  - base: record/idle@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/record/idle@iphone-15.tree.json'"
+  - base: record/idle@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/record/idle@iphone-se.tree.json'"
+  - base: record/recording@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/record/recording@iphone-15.tree.json'"
+  - base: record/recording@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/record/recording@iphone-se.tree.json'"
+  - base: record/recorded@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/record/recorded@iphone-15.tree.json'"
+  - base: record/recorded@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/record/recorded@iphone-se.tree.json'"
+  - base: compose/filled@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/compose/filled@iphone-15.tree.json'"
+  - base: compose/filled@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/compose/filled@iphone-se.tree.json'"
+  - base: compose/error-network@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/compose/error-network@iphone-15.tree.json'"
+  - base: compose/error-network@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/compose/error-network@iphone-se.tree.json'"
+  - base: generating/queued@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/queued@iphone-15.tree.json'"
+  - base: generating/queued@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/queued@iphone-se.tree.json'"
+  - base: generating/running@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/running@iphone-15.tree.json'"
+  - base: generating/running@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/running@iphone-se.tree.json'"
+  - base: generating/failed@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/failed@iphone-15.tree.json'"
+  - base: generating/failed@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/failed@iphone-se.tree.json'"
+  - base: generating/succeeded@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/succeeded@iphone-15.tree.json'"
+  - base: generating/succeeded@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/generating/succeeded@iphone-se.tree.json'"
+  - base: song/ready@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/song/ready@iphone-15.tree.json'"
+  - base: song/ready@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/song/ready@iphone-se.tree.json'"
+  - base: library/empty@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/library/empty@iphone-15.tree.json'"
+  - base: library/empty@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/library/empty@iphone-se.tree.json'"
+  - base: library/ready@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/library/ready@iphone-15.tree.json'"
+  - base: library/ready@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/library/ready@iphone-se.tree.json'"
+  - base: library/many-songs@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/library/many-songs@iphone-15.tree.json'"
+  - base: library/many-songs@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/library/many-songs@iphone-se.tree.json'"
+  - base: login/idle@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/login/idle@iphone-15.tree.json'"
+  - base: login/idle@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/login/idle@iphone-se.tree.json'"
+  - base: login/error@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/login/error@iphone-15.tree.json'"
+  - base: login/error@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/login/error@iphone-se.tree.json'"
+  - base: account/ready@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/account/ready@iphone-15.tree.json'"
+  - base: account/ready@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/account/ready@iphone-se.tree.json'"
+  - base: account/merge-required@iphone-15
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/account/merge-required@iphone-15.tree.json'"
+  - base: account/merge-required@iphone-se
+    platform: ios
+    status: unverified
+    error: "ENOENT: no such file or directory, open
+      '.harness/captures/ios/account/merge-required@iphone-se.tree.json'"

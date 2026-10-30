@@ -2,7 +2,17 @@ import path from "node:path";
 import { config } from "dotenv";
 import cloudbase from "@cloudbase/node-sdk";
 
-const collections = ["users", "recordings", "songs", "song_jobs", "usage_quotas", "provider_events"] as const;
+const collections = [
+  "users",
+  "recordings",
+  "songs",
+  "song_jobs",
+  "usage_quotas",
+  "provider_events",
+  "identities",
+  "sessions",
+  "merge_logs"
+] as const;
 
 config({ path: path.resolve(process.env.INIT_CWD ?? process.cwd(), ".env") });
 

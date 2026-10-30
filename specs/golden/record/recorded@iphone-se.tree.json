@@ -1,0 +1,59 @@
+[
+  {
+    "id": "record.nav",
+    "text": "随哼我的作品",
+    "box": {
+      "x": 24,
+      "y": 24,
+      "width": 327,
+      "height": 22,
+      "top": 24,
+      "right": 351,
+      "bottom": 46,
+      "left": 24
+    }
+  },
+  {
+    "id": "record.title",
+    "copy": "record.title",
+    "text": "哼一段，变成歌",
+    "box": {
+      "x": 24,
+      "y": 70,
+      "width": 327,
+      "height": 29,
+      "top": 70,
+      "right": 351,
+      "bottom": 99,
+      "left": 24
+    }
+  },
+  {
+    "id": "record.hold",
+    "text": "●",
+    "box": {
+      "x": 131.5,
+      "y": 164.59375,
+      "width": 112,
+      "height": 112,
+      "top": 164.59375,
+      "right": 243.5,
+      "bottom": 276.59375,
+      "left": 131.5
+    }
+  },
+  {
+    "id": "record.next",
+    "text": "补充信息",
+    "box": {
+      "x": 24,
+      "y": 342.1875,
+      "width": 96,
+      "height": 54,
+      "top": 342.1875,
+      "right": 120,
+      "bottom": 396.1875,
+      "left": 24
+    }
+  }
+]

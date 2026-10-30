@@ -1,0 +1,79 @@
+name: Suiheng
+options:
+  bundleIdPrefix: me.eexx
+  deploymentTarget:
+    iOS: '17.0'
+  xcodeVersion: '16.4'
+packages:
+  WechatSDK:
+    path: WechatSDK
+  D2S:
+    path: Packages
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    CURRENT_PROJECT_VERSION: '1'
+    MARKETING_VERSION: '0.1.0'
+    TARGETED_DEVICE_FAMILY: '1,2'
+    DEVELOPMENT_TEAM: ''
+    CODE_SIGN_STYLE: Automatic
+  configs:
+    Debug:
+      APNS_ENVIRONMENT: development
+    Release:
+      APNS_ENVIRONMENT: production
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+targets:
+  Suiheng:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes: [Assets.xcassets]
+    dependencies:
+      - package: WechatSDK
+        product: WechatOpenSDK
+      - sdk: libz.tbd
+      - sdk: libsqlite3.tbd
+      - sdk: libc++.tbd
+      - sdk: WebKit.framework
+      - package: D2S
+        product: D2SFeatures
+      - target: SuihengWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
+    entitlements:
+      path: App/Suiheng.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+        com.apple.developer.associated-domains: ['applinks:$(LINK_HOST)']
+        aps-environment: $(APNS_ENVIRONMENT)
+    scheme:
+      testTargets: [SuihengUITests]
+  SuihengWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [Extensions/Widgets]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).widgets
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        INFOPLIST_FILE: Extensions/Widgets/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+  SuihengUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Suiheng
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).uitests
+        GENERATE_INFOPLIST_FILE: YES

@@ -1,0 +1,8 @@
+APP_BUNDLE_ID = me.eexx.suiheng
+API_BASE = http:/$()/127.0.0.1:3100/v1
+SHARE_BASE = https:/$()/s.demo2song.eexx.me
+LINK_HOST = s.demo2song.eexx.me
+WECHAT_OPEN_APP_ID =
+WECHAT_MINIPROGRAM_ID =
+UNIVERSAL_LINK = https:/$()/s.demo2song.eexx.me/wx/
+#include? "Local.xcconfig"

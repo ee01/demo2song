@@ -1,0 +1,3 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {compareTrees,compareImages}from './diff.mjs';import{PNG}from'pngjs';
+test('structure and copy fail when anchors disappear or text changes',()=>{assert.equal(compareTrees([{id:'song.title',copy:'title',text:'歌曲'}],[{id:'song.title',text:'错误'}]).copy,false);assert.equal(compareTrees([{id:'song.title'}],[]).structure,false)});
+test('visual comparison catches changed button colors',()=>{const a=new PNG({width:100,height:100}),b=new PNG({width:100,height:100});a.data.fill(255);b.data.fill(0);for(let i=3;i<b.data.length;i+=4)b.data[i]=255;assert.ok(compareImages(PNG.sync.write(a),PNG.sync.write(b)).ssim<0.92);assert.equal(compareImages(PNG.sync.write(a),PNG.sync.write(a)).ssim,1)});

@@ -1,0 +1,1496 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "app.name": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随哼"
+          }
+        }
+      }
+    },
+    "app.shareTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随哼：哼一段旋律，生成一首歌"
+          }
+        }
+      }
+    },
+    "app.shareWithTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我在随哼创作了《{title}》，听听看"
+          }
+        }
+      }
+    },
+    "record.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哼一段，变成歌"
+          }
+        }
+      }
+    },
+    "record.subtitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按住下面的麦克风，哼出你的旋律"
+          }
+        }
+      }
+    },
+    "record.listening": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在聆听你的旋律…"
+          }
+        }
+      }
+    },
+    "record.holdHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按住开始 · 松开结束"
+          }
+        }
+      }
+    },
+    "record.holdButton": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按住录音"
+          }
+        }
+      }
+    },
+    "record.durationHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议 {min}–{max} 秒，先哼主歌或副歌都可以"
+          }
+        }
+      }
+    },
+    "record.tooShort": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "至少哼 {min} 秒"
+          }
+        }
+      }
+    },
+    "record.permissionDenied": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音失败，请检查麦克风权限"
+          }
+        }
+      }
+    },
+    "record.myHum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的哼唱"
+          }
+        }
+      }
+    },
+    "consent.lead": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用录音生成歌曲前，请阅读并同意"
+          }
+        }
+      }
+    },
+    "consent.agreement": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "《声纹授权协议》"
+          }
+        }
+      }
+    },
+    "consent.agree": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同意"
+          }
+        }
+      }
+    },
+    "consent.needAgree": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先同意声纹授权协议"
+          }
+        }
+      }
+    },
+    "consent.saved": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已同意"
+          }
+        }
+      }
+    },
+    "consent.saveFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授权保存失败，请重试"
+          }
+        }
+      }
+    },
+    "compose.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完善歌曲信息"
+          }
+        }
+      }
+    },
+    "compose.description": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下面的内容全部可选。什么都不填也行，我们会根据你的哼唱自动创作"
+          }
+        }
+      }
+    },
+    "compose.optional": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部可选"
+          }
+        }
+      }
+    },
+    "compose.rerecord": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新录制"
+          }
+        }
+      }
+    },
+    "compose.uploading": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传中…"
+          }
+        }
+      }
+    },
+    "compose.submitting": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提交中…"
+          }
+        }
+      }
+    },
+    "compose.submit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成 demo"
+          }
+        }
+      }
+    },
+    "compose.uploadFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音上传失败，请重试"
+          }
+        }
+      }
+    },
+    "compose.uploadTimeout": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音上传超时，请检查网络后重试"
+          }
+        }
+      }
+    },
+    "compose.fileTooLarge": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音文件过大，请重新录制后再试"
+          }
+        }
+      }
+    },
+    "compose.submitFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提交失败"
+          }
+        }
+      }
+    },
+    "generating.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在为你创作…"
+          }
+        }
+      }
+    },
+    "generating.description": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 正在把你的哼唱变成一首歌，请稍候"
+          }
+        }
+      }
+    },
+    "generating.submitted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任务已提交，可以放心离开小程序"
+          }
+        }
+      }
+    },
+    "generating.queued": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任务正在排队，可以放心离开小程序"
+          }
+        }
+      }
+    },
+    "generating.running": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 正在创作，可以放心离开小程序"
+          }
+        }
+      }
+    },
+    "generating.failedTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成未完成"
+          }
+        }
+      }
+    },
+    "generating.failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成失败，请重试"
+          }
+        }
+      }
+    },
+    "generating.notify": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成后通知我"
+          }
+        }
+      }
+    },
+    "generating.notifyOn": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成后会通知你"
+          }
+        }
+      }
+    },
+    "generating.notifyFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知登记失败，请重试"
+          }
+        }
+      }
+    },
+    "generating.notifyOff": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未开启通知"
+          }
+        }
+      }
+    },
+    "generating.notifyMissing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知模板尚未配置"
+          }
+        }
+      }
+    },
+    "generating.notifyHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启通知后可关闭小程序，完成后会收到微信服务通知"
+          }
+        }
+      }
+    },
+    "generating.library": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看我的音频"
+          }
+        }
+      }
+    },
+    "generating.offline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网络暂时中断，回到前台后会自动查询"
+          }
+        }
+      }
+    },
+    "generating.pollFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂时无法查询，稍后会自动重试"
+          }
+        }
+      }
+    },
+    "demoResult.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成！"
+          }
+        }
+      }
+    },
+    "demoResult.description": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是你的 demo，满意的话可以生成完整版"
+          }
+        }
+      }
+    },
+    "demoResult.fallbackTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的 demo"
+          }
+        }
+      }
+    },
+    "demoResult.loading": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载…"
+          }
+        }
+      }
+    },
+    "demoResult.playing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在播放…"
+          }
+        }
+      }
+    },
+    "demoResult.playHum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试听原录音（哼唱）"
+          }
+        }
+      }
+    },
+    "demoResult.share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享"
+          }
+        }
+      }
+    },
+    "demoResult.download": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载"
+          }
+        }
+      }
+    },
+    "demoResult.makeFull": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成完整版歌曲"
+          }
+        }
+      }
+    },
+    "demoResult.library": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的音频"
+          }
+        }
+      }
+    },
+    "demoResult.again": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再哼一首"
+          }
+        }
+      }
+    },
+    "demoResult.errorTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出了点问题"
+          }
+        }
+      }
+    },
+    "demoResult.retry": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
+    "demoResult.back": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返回重新录制"
+          }
+        }
+      }
+    },
+    "fullCompose.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成完整版歌曲"
+          }
+        }
+      }
+    },
+    "fullCompose.description": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以在这里微调补充信息，我们会基于你的 demo 创作一首更完整的歌"
+          }
+        }
+      }
+    },
+    "fullCompose.generatingTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在生成完整版…"
+          }
+        }
+      }
+    },
+    "fullCompose.generatingDescription": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完整歌曲耗时更久，大约 1-2 分钟，请耐心等待"
+          }
+        }
+      }
+    },
+    "fullCompose.draftFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 歌名和歌词生成失败，你仍然可以手动填写并直接生成。"
+          }
+        }
+      }
+    },
+    "fullCompose.back": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返回"
+          }
+        }
+      }
+    },
+    "fullCompose.submitting": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提交中…"
+          }
+        }
+      }
+    },
+    "fullCompose.submit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成完整版"
+          }
+        }
+      }
+    },
+    "fullCompose.regenerate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新生成新的完整歌曲"
+          }
+        }
+      }
+    },
+    "library.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的音频"
+          }
+        }
+      }
+    },
+    "library.description": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这里收藏了你创作的 demo 与完整歌曲"
+          }
+        }
+      }
+    },
+    "library.empty": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有作品，去哼一段试试吧"
+          }
+        }
+      }
+    },
+    "library.create": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "去创作"
+          }
+        }
+      }
+    },
+    "library.fullSection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完整版歌曲"
+          }
+        }
+      }
+    },
+    "library.demoFallback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的 demo"
+          }
+        }
+      }
+    },
+    "library.fullFallback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完整版歌曲"
+          }
+        }
+      }
+    },
+    "library.ready": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成"
+          }
+        }
+      }
+    },
+    "library.failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成失败"
+          }
+        }
+      }
+    },
+    "library.generating": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成中…"
+          }
+        }
+      }
+    },
+    "library.duration": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约 {seconds} 秒"
+          }
+        }
+      }
+    },
+    "library.loadFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载失败"
+          }
+        }
+      }
+    },
+    "library.failureTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成失败原因"
+          }
+        }
+      }
+    },
+    "library.failureFallback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成服务暂时未能完成这首歌曲，请稍后重新尝试。"
+          }
+        }
+      }
+    },
+    "library.confirm": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "知道了"
+          }
+        }
+      }
+    },
+    "library.reason": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原因"
+          }
+        }
+      }
+    },
+    "song.demoFallback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的 demo"
+          }
+        }
+      }
+    },
+    "song.fullFallback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完整版歌曲"
+          }
+        }
+      }
+    },
+    "song.demoTag": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "demo"
+          }
+        }
+      }
+    },
+    "song.fullTag": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完整版"
+          }
+        }
+      }
+    },
+    "song.share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享给好友"
+          }
+        }
+      }
+    },
+    "song.download": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载保存"
+          }
+        }
+      }
+    },
+    "song.loading": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载…"
+          }
+        }
+      }
+    },
+    "song.playing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在播放…"
+          }
+        }
+      }
+    },
+    "song.playHum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试听原录音（哼唱）"
+          }
+        }
+      }
+    },
+    "song.humTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录制原声"
+          }
+        }
+      }
+    },
+    "song.demoAudio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "demo 音频"
+          }
+        }
+      }
+    },
+    "song.demoUsed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成完整版时使用的 demo"
+          }
+        }
+      }
+    },
+    "song.humMeta": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原始哼唱"
+          }
+        }
+      }
+    },
+    "song.humDuration": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原始哼唱 · 约 {seconds} 秒"
+          }
+        }
+      }
+    },
+    "song.lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词"
+          }
+        }
+      }
+    },
+    "song.makeFull": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成完整版歌曲"
+          }
+        }
+      }
+    },
+    "song.remakeFull": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新生成新的完整歌曲"
+          }
+        }
+      }
+    },
+    "song.viewDemo": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看原 demo"
+          }
+        }
+      }
+    },
+    "song.loadFailed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载失败"
+          }
+        }
+      }
+    },
+    "share.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哼一段，变成歌"
+          }
+        }
+      }
+    },
+    "share.subtitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "朋友用哼唱创作了一首歌，分享给你听"
+          }
+        }
+      }
+    },
+    "share.fallbackTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一首歌"
+          }
+        }
+      }
+    },
+    "share.lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词"
+          }
+        }
+      }
+    },
+    "share.cta": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成你自己的歌"
+          }
+        }
+      }
+    },
+    "share.ctaHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只需哼唱几秒，AI 帮你写成完整歌曲"
+          }
+        }
+      }
+    },
+    "share.loading": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载中…"
+          }
+        }
+      }
+    },
+    "login.apple": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过 Apple 登录"
+          }
+        }
+      }
+    },
+    "login.wechat": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "微信登录"
+          }
+        }
+      }
+    },
+    "login.mergeHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在小程序创作过？请先打开一次最新版小程序，再在这里用微信登录。"
+          }
+        }
+      }
+    },
+    "login.mergeTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合并已有账号"
+          }
+        }
+      }
+    },
+    "login.mergeBody": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将把当前账号的 {currentSongs} 首歌并入微信账号（{targetSongs} 首歌）"
+          }
+        }
+      }
+    },
+    "account.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账号"
+          }
+        }
+      }
+    },
+    "account.identities": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录方式"
+          }
+        }
+      }
+    },
+    "account.linkWechat": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "绑定微信"
+          }
+        }
+      }
+    },
+    "account.linkApple": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "绑定 Apple"
+          }
+        }
+      }
+    },
+    "account.delete": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "注销账号"
+          }
+        }
+      }
+    },
+    "account.deleteConfirm": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "注销后将退出登录，作品会在 30 天后删除。"
+          }
+        }
+      }
+    },
+    "errors.MISSING_USER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先登录"
+          }
+        }
+      }
+    },
+    "errors.RECORDING_NOT_FOUND": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到这段录音"
+          }
+        }
+      }
+    },
+    "errors.DAILY_DEMO_QUOTA_EXHAUSTED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天的试听生成次数已用完"
+          }
+        }
+      }
+    },
+    "errors.LYRICS_GENERATION_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词生成失败，请稍后重试"
+          }
+        }
+      }
+    },
+    "errors.FULL_SONG_DISABLED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完整版功能暂未开放"
+          }
+        }
+      }
+    },
+    "errors.DEMO_SONG_NOT_READY": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "demo 还没准备好"
+          }
+        }
+      }
+    },
+    "errors.DAILY_FULL_QUOTA_EXHAUSTED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天的完整版生成次数已用完"
+          }
+        }
+      }
+    },
+    "errors.SONG_NOT_FOUND": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到这首歌"
+          }
+        }
+      }
+    },
+    "errors.JOB_NOT_FOUND": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到这个任务"
+          }
+        }
+      }
+    },
+    "errors.MISSING_FILE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先上传录音"
+          }
+        }
+      }
+    },
+    "errors.INVALID_DURATION": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音时长不在允许范围内"
+          }
+        }
+      }
+    },
+    "errors.MINIMAX_ERROR": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成服务暂时不可用，请稍后重试"
+          }
+        }
+      }
+    },
+    "errors.MUREKA_ERROR": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成服务暂时不可用，请稍后重试"
+          }
+        }
+      }
+    },
+    "errors.VALIDATION_ERROR": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提交的内容有误"
+          }
+        }
+      }
+    },
+    "errors.INTERNAL_ERROR": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务暂时不可用，请稍后重试"
+          }
+        }
+      }
+    },
+    "errors.MERGE_REQUIRED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个微信已经有随哼账号，需要合并后才能继续"
+          }
+        }
+      }
+    },
+    "errors.JOB_IN_PROGRESS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还有歌曲正在生成，完成后再合并账号"
+          }
+        }
+      }
+    },
+    "errors.TOKEN_EXPIRED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录已过期，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.TOKEN_INVALID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录状态无效，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.SESSION_REVOKED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录已退出，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.SESSION_REPLAYED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录状态已失效，请重新登录"
+          }
+        }
+      }
+    },
+    "errors.ACCOUNT_UNAVAILABLE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个账号已停用"
+          }
+        }
+      }
+    },
+    "errors.WECHAT_LOGIN_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "微信登录失败，请重试"
+          }
+        }
+      }
+    },
+    "errors.APPLE_LOGIN_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 登录失败，请重新授权"
+          }
+        }
+      }
+    },
+    "errors.IDENTITY_VERIFICATION_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身份验证失败，请重试"
+          }
+        }
+      }
+    },
+    "errors.MERGE_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账号合并暂未完成，请重试"
+          }
+        }
+      }
+    },
+    "errors.APPLE_REVOKE_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 授权撤销失败，请稍后重试"
+          }
+        }
+      }
+    },
+    "errors.UPLOAD_MISMATCH": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传文件大小或类型不符，请重新上传"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

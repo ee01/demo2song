@@ -1,0 +1,72 @@
+[
+  {
+    "id": "compose.nav",
+    "text": "随哼我的作品",
+    "box": {
+      "x": 24,
+      "y": 24,
+      "width": 342,
+      "height": 22,
+      "top": 24,
+      "right": 366,
+      "bottom": 46,
+      "left": 24
+    }
+  },
+  {
+    "id": "compose.title",
+    "text": "补充信息",
+    "box": {
+      "x": 24,
+      "y": 70,
+      "width": 342,
+      "height": 29,
+      "top": 70,
+      "right": 366,
+      "bottom": 99,
+      "left": 24
+    }
+  },
+  {
+    "id": "compose.style",
+    "text": "",
+    "box": {
+      "x": 24,
+      "y": 137,
+      "width": 342,
+      "height": 41,
+      "top": 137,
+      "right": 366,
+      "bottom": 178,
+      "left": 24
+    }
+  },
+  {
+    "id": "compose.description",
+    "text": "",
+    "box": {
+      "x": 24,
+      "y": 295,
+      "width": 342,
+      "height": 56,
+      "top": 295,
+      "right": 366,
+      "bottom": 351,
+      "left": 24
+    }
+  },
+  {
+    "id": "compose.submit",
+    "text": "生成 Demo",
+    "box": {
+      "x": 24,
+      "y": 461,
+      "width": 111.125,
+      "height": 54,
+      "top": 461,
+      "right": 135.125,
+      "bottom": 515,
+      "left": 24
+    }
+  }
+]

@@ -68,3 +68,13 @@ async function runFfmpeg(args: string[]): Promise<void> {
     });
   });
 }
+
+// ID3v2.3 TXXX user-defined text frame: description=AIGC, value=true.
+export function markAIGC(audio: Buffer): Buffer {
+  const payload = Buffer.concat([Buffer.from([0]), Buffer.from("AIGC\0true", "latin1")]);
+  const frame = Buffer.alloc(10); frame.write("TXXX"); frame.writeUInt32BE(payload.length, 4);
+  const size = frame.length + payload.length; const header = Buffer.from([0x49, 0x44, 0x33, 3, 0, 0, (size >> 21) & 127, (size >> 14) & 127, (size >> 7) & 127, size & 127]);
+  // Replace an existing ID3v2 prefix instead of stacking tags.
+  const oldSize = audio.subarray(0, 3).toString() === "ID3" && audio.length >= 10 ? 10 + ((audio[6] & 127) << 21 | (audio[7] & 127) << 14 | (audio[8] & 127) << 7 | audio[9] & 127) : 0;
+  return Buffer.concat([header, frame, payload, audio.subarray(oldSize)]);
+}

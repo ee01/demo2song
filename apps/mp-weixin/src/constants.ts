@@ -1,20 +1,10 @@
+import config from "../../../packages/config/config/demo2song.config.json";
 import type { SongLanguage, SongPromptInput, VocalGender } from "@demo2song/shared";
 
-export const styleOptions = ["流行", "抒情", "民谣", "R&B", "摇滚", "电子", "古风"];
-export const moodOptions = ["温暖", "治愈", "忧伤", "热血", "浪漫", "梦幻"];
-
-export const languageOptions: Array<{ label: string; value: SongLanguage }> = [
-  { label: "自动", value: "auto" },
-  { label: "中文", value: "zh" },
-  { label: "英文", value: "en" }
-];
-
-export const genderOptions: Array<{ label: string; value: VocalGender }> = [
-  { label: "自动", value: "auto" },
-  { label: "女声", value: "female" },
-  { label: "男声", value: "male" },
-  { label: "混合", value: "mixed" }
-];
+export const styleOptions = config.options.styles;
+export const moodOptions = config.options.moods;
+export const languageOptions = config.options.languages as Array<{ label: string; value: SongLanguage }>;
+export const genderOptions = config.options.genders as Array<{ label: string; value: VocalGender }>;
 
 export const DEFAULT_STYLE = "流行，自然真诚的人声";
 

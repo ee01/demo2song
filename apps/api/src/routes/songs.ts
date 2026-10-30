@@ -1,49 +1,16 @@
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 import { loadValidatedConfig } from "@demo2song/config";
+import { demoJobSchema, fullDraftSchema, fullJobSchema, idParamsSchema } from "@demo2song/contract";
 import type { SongRecord } from "@demo2song/data";
 import type { GenerateFullDraftResponse, SongBrief, SongPromptInput } from "@demo2song/shared";
 import { generateLyricsDraft } from "../services/minimax-lyrics.js";
 import { assertAndConsumeQuota } from "../services/quota.js";
+import { requireUser } from "../auth/require-user.js";
 import { repository } from "../db.js";
 import { getObjectStorage } from "../storage/index.js";
+import { bindRoute } from "./bind.js";
 
 const config = loadValidatedConfig();
-
-const promptSchema = z.object({
-  style: z.string().min(1).max(120),
-  mood: z.string().max(80).optional(),
-  language: z.enum(["zh", "en", "ja", "ko", "auto"]).default("zh"),
-  vocalGender: z.enum(["female", "male", "mixed", "auto"]).default("auto"),
-  description: z.string().max(500).optional(),
-  lyricSeed: z.string().max(1000).optional()
-});
-
-const promptOverrideSchema = z
-  .object({
-    style: z.string().min(1).max(120).optional(),
-    mood: z.string().max(80).optional(),
-    language: z.enum(["zh", "en", "ja", "ko", "auto"]).optional(),
-    vocalGender: z.enum(["female", "male", "mixed", "auto"]).optional(),
-    description: z.string().max(500).optional(),
-    lyricSeed: z.string().max(1000).optional()
-  })
-  .partial();
-
-const demoJobSchema = z.object({
-  recordingId: z.string().min(1),
-  prompt: promptSchema
-});
-
-const fullJobSchema = z.object({
-  prompt: promptOverrideSchema.optional(),
-  title: z.string().max(80).optional(),
-  lyrics: z.string().max(3500).optional()
-});
-
-const fullDraftSchema = z.object({
-  prompt: promptOverrideSchema.optional()
-});
 
 function mergeSongPrompt(base: SongPromptInput, override: Partial<SongPromptInput> = {}): SongPromptInput {
   return {
@@ -63,8 +30,8 @@ async function toPlaybackUrl(song: SongRecord): Promise<string | undefined> {
   return getObjectStorage().getPublicOrSignedUrl(song.objectKey, config.storage.signedUrlTtlSeconds);
 }
 
-async function toBrief(song: SongRecord): Promise<SongBrief> {
-  const job = await repository.findJobForSongForUser(song.id, song.userId);
+async function toBrief(song: SongRecord, knownJob?: { id: string } | null): Promise<SongBrief> {
+  const job = knownJob === undefined ? await repository.findJobForSongForUser(song.id, song.userId) : knownJob;
   return {
     id: song.id,
     userId: song.userId,
@@ -85,15 +52,13 @@ async function toBrief(song: SongRecord): Promise<SongBrief> {
 }
 
 export async function songRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/songs/demo-jobs", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+  bindRoute(app, "post", "/songs/demo-jobs", async (request, reply) => {
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
 
     const body = demoJobSchema.parse(request.body);
     const recording = await repository.findRecordingForUser(body.recordingId, userId);
-    if (!recording) {
+    if (!recording || recording.rawMeta?.uploadComplete === false) {
       return reply.code(404).send({ error: "RECORDING_NOT_FOUND" });
     }
 
@@ -134,14 +99,12 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.code(201).send({ jobId: job.id, songId: song.id, status: job.status });
-  });
+  }, { body: demoJobSchema });
 
-  app.post("/songs/:id/full-draft", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+  bindRoute(app, "post", "/songs/:id/full-draft", async (request, reply) => {
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
+    const { id } = idParamsSchema.parse(request.params);
 
     const parentSong = await repository.findReadyDemoSongForUser(id, userId);
     if (!parentSong) {
@@ -158,14 +121,12 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       request.log.warn({ error }, "MiniMax lyrics generation failed");
       return reply.code(502).send({ error: "LYRICS_GENERATION_FAILED" });
     }
-  });
+  }, { params: idParamsSchema });
 
-  app.post("/songs/:id/full-jobs", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+  bindRoute(app, "post", "/songs/:id/full-jobs", async (request, reply) => {
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
+    const { id } = idParamsSchema.parse(request.params);
     if (!config.features.enableExtendSong) {
       return reply.code(409).send({ error: "FULL_SONG_DISABLED" });
     }
@@ -223,35 +184,26 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
       status: job.status,
       mode: config.defaultProvider === "mureka" ? "extend" : "regenerate"
     });
-  });
+  }, { params: idParamsSchema });
 
   app.get("/songs", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
 
     const songs = await repository.listSongsForUser(userId);
-    const demoSongs: SongBrief[] = [];
-    for (const song of songs.filter((item) => item.stage === "demo")) {
-      const fullCount = await repository.countReadyFullForDemo(song.id);
-      if (fullCount === 0) {
-        demoSongs.push(await toBrief(song));
-      }
-    }
-    const fullSongs = await Promise.all(
-      songs.filter((item) => item.stage === "full").map((item) => toBrief(item))
-    );
+    const jobs = await repository.listJobsForUser(userId);
+    const jobsBySong = new Map(jobs.map((job) => [job.songId, job]));
+    const readyParents = new Set(songs.filter((song) => song.stage === "full" && song.status === "ready").map((song) => song.parentSongId));
+    const demoSongs = await Promise.all(songs.filter((song) => song.stage === "demo" && !readyParents.has(song.id)).map((song) => toBrief(song, jobsBySong.get(song.id) ?? null)));
+    const fullSongs = await Promise.all(songs.filter((song) => song.stage === "full").map((song) => toBrief(song, jobsBySong.get(song.id) ?? null)));
 
     return reply.send({ demos: demoSongs, fullSongs });
   });
 
-  app.get("/songs/:id", async (request, reply) => {
-    const userId = String(request.headers["x-user-id"] ?? "");
-    const { id } = z.object({ id: z.string() }).parse(request.params);
-    if (!userId) {
-      return reply.code(401).send({ error: "MISSING_USER" });
-    }
+  bindRoute(app, "get", "/songs/:id", async (request, reply) => {
+    const userId = await requireUser(request, reply);
+    if (!userId) return;
+    const { id } = idParamsSchema.parse(request.params);
 
     const song = await repository.findSongForUser(id, userId);
     if (!song) {
@@ -291,5 +243,5 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
     }
 
     return reply.send(detail);
-  });
+  }, { params: idParamsSchema });
 }

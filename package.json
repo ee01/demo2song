@@ -5,7 +5,8 @@
   "description": "WeChat mini program MVP for humming-to-song generation.",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "tools/*"
   ],
   "scripts": {
     "dev": "npm run dev:weapp -w @demo2song/mp-weixin",
@@ -18,12 +19,18 @@
     "build:cloudrun": "yarn install --frozen-lockfile && yarn build:all",
     "deploy:cloudrun": "node scripts/deploy-cloudrun.mjs",
     "cloudbase:init": "npm run cloudbase:init -w @demo2song/data",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "contract:build": "npm run openapi -w @demo2song/contract && npm run codegen -w @demo2song/contract-client",
+    "tokens:build": "npm run build -w @demo2song/design-tokens",
+    "i18n:build": "npm run build -w @demo2song/i18n",
+    "typecheck": "npm run build -w @demo2song/contract && npm run typecheck --workspaces --if-present && tsc -p tsconfig.smoke.json",
     "test": "npm run test --workspaces --if-present",
     "config:validate": "npm run config:validate -w @demo2song/config",
     "dev:api": "npm run dev -w @demo2song/api",
     "dev:worker": "npm run dev -w @demo2song/worker",
-    "dev:mp": "npm run dev:weapp -w @demo2song/mp-weixin"
+    "dev:mp": "npm run dev:weapp -w @demo2song/mp-weixin",
+    "harness": "node tools/harness/cli.mjs",
+    "ios:prepare": "yarn harness codegen && xcodegen generate --spec apps/ios/project.yml",
+    "ios:smoke": "tsx scripts/ios-smoke.mts"
   },
   "resolutions": {
     "sass": "1.69.7"

@@ -6,7 +6,7 @@ import SongInfoForm from "../../components/SongInfoForm";
 import PlayerCard, { PlayerButtonIcon } from "../../components/PlayerCard";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { emptyPromptForm, promptFormToInput, type PromptForm } from "../../constants";
-import { API_BASE, authHeader, ensureLogin, request, errorMessage } from "../../utils/request";
+import { refresh, API_BASE, authHeader, ensureLogin, request, errorMessage } from "../../utils/request";
 import { saveSong } from "../../utils/download";
 import { hasVoiceprintAgreement, saveVoiceprintAgreement } from "../../utils/voiceprintAgreement";
 import { registerGenerationNotice, requestGenerationNotice, saveActiveGeneration } from "../../utils/generation";
@@ -303,7 +303,9 @@ export default function IndexPage() {
         uploadTask.onProgressUpdate((progress) => {
           setUploadProgress(Math.min(99, progress.progress));
         });
-        return await uploadTask;
+        const result = await uploadTask;
+        if (result.statusCode === 401 && attempt === 0) { await refresh(); continue; }
+        return result;
       } catch (uploadError) {
         const message = errorMessage(uploadError, "上传失败");
         const canRetry = attempt === 0 && /timeout/i.test(message);

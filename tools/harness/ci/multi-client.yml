@@ -1,0 +1,30 @@
+name: Multi-client verification
+on: [pull_request, workflow_dispatch]
+jobs:
+  shared:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable && yarn install --frozen-lockfile
+      - run: yarn config:validate && yarn typecheck
+      - run: npm run build -w @demo2song/config -w @demo2song/shared -w @demo2song/data
+      - run: yarn test
+      - run: node node_modules/playwright/cli.js install --with-deps chromium
+      - run: yarn harness proto build && yarn harness acceptance --feature ios-foundation && yarn harness golden --feature ios-foundation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: prototype-golden, path: specs/golden }
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable && yarn install --frozen-lockfile
+      - run: yarn harness codegen && git diff --exit-code
+      - run: brew install xcodegen
+      - run: xcodegen generate --spec apps/ios/project.yml
+      - run: swift test --package-path apps/ios/Packages
+      - run: xcodebuild -project apps/ios/Suiheng.xcodeproj -scheme Suiheng -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build

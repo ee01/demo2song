@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { SongBrief } from "@demo2song/shared";
+import { issueSession } from "./auth/session.js";
 import { buildApp } from "./app.js";
 import { repository } from "./db.js";
 
@@ -164,6 +165,77 @@ describe("api app", () => {
       playbackUrl: `https://storage.test/songs/${userId}/${recording.id}/full/${fullJob.songId}.mp3`
     });
 
+    await app.close();
+  });
+
+  it("mirrors routes under /v1 and wraps errors without changing legacy responses", async () => {
+    const app = await buildApp();
+    const user = await repository.createUser();
+    const userId = user.id;
+    const bearer = { authorization: `Bearer ${(await issueSession(userId, "mp")).accessToken}` };
+    const legacyMissing = await app.inject({ method: "GET", url: "/songs" });
+    expect(legacyMissing.statusCode).toBe(401);
+    expect(legacyMissing.json()).toEqual({ error: "MISSING_USER" });
+
+    const v1Missing = await app.inject({ method: "GET", url: "/v1/songs" });
+    expect(v1Missing.statusCode).toBe(401);
+    expect(v1Missing.json()).toEqual({ error: { code: "MISSING_USER" } });
+
+    const headerOnly = await app.inject({
+      method: "GET",
+      url: "/v1/songs",
+      headers: { "x-user-id": userId }
+    });
+    expect(headerOnly.statusCode).toBe(401);
+    expect(headerOnly.json()).toEqual({ error: { code: "MISSING_USER" } });
+
+    const recording = await repository.createRecording({
+      userId,
+      objectKey: `recordings/${userId}/take.mp3`,
+      mimeType: "audio/mpeg",
+      durationSeconds: 12
+    });
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/songs/demo-jobs",
+      headers: bearer,
+      payload: {
+        recordingId: recording.id,
+        prompt: { style: "warm indie pop", language: "zh", vocalGender: "auto" }
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ status: "queued", songId: expect.any(String) });
+
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/v1/songs/demo-jobs",
+      headers: bearer,
+      payload: {}
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json()).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
+
+    const legacyInvalid = await app.inject({
+      method: "POST",
+      url: "/songs/demo-jobs",
+      headers: { "x-user-id": userId },
+      payload: {}
+    });
+    expect(legacyInvalid.json().error).toBeTypeOf("string");
+
+    const v1Config = await app.inject({ method: "GET", url: "/v1/config/public" });
+    const legacyConfig = await app.inject({ method: "GET", url: "/config/public" });
+    expect(v1Config.statusCode).toBe(200);
+    expect(v1Config.json()).toEqual(legacyConfig.json());
+
+    const missingSong = await app.inject({
+      method: "GET",
+      url: "/v1/songs/missing",
+      headers: bearer
+    });
+    expect(missingSong.statusCode).toBe(404);
+    expect(missingSong.json()).toEqual({ error: { code: "SONG_NOT_FOUND" } });
     await app.close();
   });
 });

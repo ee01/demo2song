@@ -1,0 +1,9 @@
+// Copy to Local.xcconfig, then fill registered identifiers. Never add secrets.
+DEVELOPMENT_TEAM =
+APP_BUNDLE_ID =
+API_BASE = https:/$()/YOUR_TEST_API_HOST/v1
+SHARE_BASE = https:/$()/YOUR_SHARE_HOST
+LINK_HOST = YOUR_SHARE_HOST
+UNIVERSAL_LINK = https:/$()/YOUR_SHARE_HOST/wx/
+WECHAT_OPEN_APP_ID =
+WECHAT_MINIPROGRAM_ID =

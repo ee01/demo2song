@@ -26,6 +26,8 @@
    - `MINIMAX_API_KEY`: required for the default provider.
    - `WECHAT_APP_ID`, `WECHAT_APP_SECRET`: required outside dev mock login.
    - `WECHAT_LOGIN_STRICT`: keep `false` for local development so an invalid devtools code can fall back to a `dev_*` user; set `true` in production.
+   - `JWT_SECRET`: leave empty locally. Production must set at least 32 characters.
+   - `WECHAT_OPEN_APP_ID`, `WECHAT_OPEN_APP_SECRET`: iOS WeChat login. Empty locally uses a dev identity.
 
 4. Create CloudBase collections.
 

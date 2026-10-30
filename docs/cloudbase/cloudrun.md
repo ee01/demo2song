@@ -55,6 +55,8 @@ Required environment variables (console **服务设置 → 环境变量**):
 
 - `CLOUDBASE_ENV_ID`
 - `WECHAT_APP_ID`, `WECHAT_APP_SECRET`, `WECHAT_LOGIN_STRICT=true`
+- `JWT_SECRET`（至少 32 字符；生产必填，否则进程起不来）
+- `WECHAT_OPEN_APP_ID`, `WECHAT_OPEN_APP_SECRET`（iOS 微信登录；未上架前可空）
 - `COS_SECRET_ID`, `COS_SECRET_KEY`, `COS_BUCKET`, `COS_REGION`
 - `COS_CDN_BASE_URL` optional; if you use it, the same CDN domain also needs to be added to the mini program `downloadFile` whitelist
 - `API_PORT=3000` optional if image default is used

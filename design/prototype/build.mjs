@@ -1,0 +1,15 @@
+import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import YAML from 'yaml';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const read = p => readFile(path.join(root, p), 'utf8');
+const screens = YAML.parse(await read('design/prototype/screens.yaml')).screens;
+const fixtures = Object.fromEntries(await Promise.all((await readdir(path.join(root,'specs/fixtures'))).filter(f=>f.endsWith('.json')).map(async f=>[f.slice(0,-5), JSON.parse(await read(`specs/fixtures/${f}`))])));
+const copy = JSON.parse(await read('packages/i18n/zh-Hans.json'));
+const templates = await Promise.all(screens.map(s=>read(`design/prototype/src/screens/${s.id}.html`)));
+const logo = (await readFile(path.join(root,'apps/mp-weixin/src/assets/demo2song-icon-256.png'))).toString('base64');
+const config = JSON.stringify({ screens, fixtures, copy }).replace(/</g,'\\u003c');
+const html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>随哼 · 全站原型</title><style>${await read('packages/design-tokens/generated/css/tokens.css')}\n${await read('design/prototype/src/components.css')}</style><body><aside><img width="48" alt="随哼" src="data:image/png;base64,${logo}"><h1>随哼</h1><nav id="map"></nav><label>状态<select id="states"></select></label><label>Fixture<select id="fixtures"></select></label><label>设备<select id="devices"><option value="iphone-15">iPhone 15</option><option value="iphone-se">iPhone SE</option><option value="mp-750">小程序</option></select></label></aside><main id="phone"></main>${templates.join('\n')}<script>window.PROTOTYPE=${config};</script><script>${await read('design/prototype/src/runtime.js')}</script></body></html>`;
+await mkdir(path.join(root, 'design/prototype/dist'),{recursive:true}); await writeFile(path.join(root,'design/prototype/dist/prototype.html'),html);
+console.log(`Built ${screens.length} screens, ${Object.keys(fixtures).length} fixtures`);

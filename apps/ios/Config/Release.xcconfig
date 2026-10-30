@@ -1,0 +1,3 @@
+#include "Debug.xcconfig"
+API_BASE = https:/$()/api.demo2song.eexx.me/v1
+#include? "Local.xcconfig"

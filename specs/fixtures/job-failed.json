@@ -1,0 +1,19 @@
+{
+  "user": {
+    "id": "fixture-user",
+    "displayName": "晚风"
+  },
+  "song": {
+    "id": "fixture-song",
+    "title": "旧街晚风",
+    "lyrics": "[Verse]\n风经过旧街角\n[Chorus]\n让旋律陪你到天明"
+  },
+  "draft": {
+    "title": "旧街晚风",
+    "lyrics": "[Verse]\n风经过旧街角\n[Chorus]\n让旋律陪你到天明"
+  },
+  "job": {
+    "status": "failed"
+  },
+  "songs": []
+}

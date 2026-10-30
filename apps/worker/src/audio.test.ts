@@ -85,3 +85,9 @@ async function run(command: string, args: string[]): Promise<string> {
     });
   });
 }
+
+it("writes an AIGC ID3 frame without stacking existing ID3 prefixes", async () => {
+  const { markAIGC } = await import("./audio.js");
+  const audio = Buffer.from([0xff, 0xfb, 0x90, 0x44]); const first = markAIGC(audio); const second = markAIGC(first);
+  expect(first.subarray(0,3).toString()).toBe("ID3"); expect(first.includes(Buffer.from("AIGC\0true"))).toBe(true); expect(second).toEqual(first); expect(first.subarray(-4)).toEqual(audio);
+});

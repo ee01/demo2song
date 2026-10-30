@@ -1,0 +1,72 @@
+[
+  {
+    "id": "account.nav",
+    "text": "随哼我的作品",
+    "box": {
+      "x": 24,
+      "y": 24,
+      "width": 327,
+      "height": 22,
+      "top": 24,
+      "right": 351,
+      "bottom": 46,
+      "left": 24
+    }
+  },
+  {
+    "id": "account.title",
+    "text": "账号",
+    "box": {
+      "x": 24,
+      "y": 70,
+      "width": 327,
+      "height": 29,
+      "top": 70,
+      "right": 351,
+      "bottom": 99,
+      "left": 24
+    }
+  },
+  {
+    "id": "account.identities",
+    "text": "微信 / Apple",
+    "box": {
+      "x": 24,
+      "y": 115,
+      "width": 327,
+      "height": 54,
+      "top": 115,
+      "right": 351,
+      "bottom": 169,
+      "left": 24
+    }
+  },
+  {
+    "id": "account.link",
+    "text": "绑定账号",
+    "box": {
+      "x": 24,
+      "y": 185,
+      "width": 96,
+      "height": 54,
+      "top": 185,
+      "right": 120,
+      "bottom": 239,
+      "left": 24
+    }
+  },
+  {
+    "id": "account.delete",
+    "text": "注销账号",
+    "box": {
+      "x": 120,
+      "y": 185,
+      "width": 96,
+      "height": 54,
+      "top": 185,
+      "right": 216,
+      "bottom": 239,
+      "left": 120
+    }
+  }
+]
