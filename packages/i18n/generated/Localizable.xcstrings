@@ -1440,6 +1440,56 @@
           }
         }
       }
+    },
+    "errors.APPLE_LOGIN_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 登录失败，请重新授权"
+          }
+        }
+      }
+    },
+    "errors.IDENTITY_VERIFICATION_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身份验证失败，请重试"
+          }
+        }
+      }
+    },
+    "errors.MERGE_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账号合并暂未完成，请重试"
+          }
+        }
+      }
+    },
+    "errors.APPLE_REVOKE_FAILED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 授权撤销失败，请稍后重试"
+          }
+        }
+      }
+    },
+    "errors.UPLOAD_MISMATCH": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传文件大小或类型不符，请重新上传"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

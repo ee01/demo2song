@@ -95,6 +95,17 @@ export class InMemoryRepository implements Demo2SongRepository {
     this.update("identities", id, patch);
   }
 
+  async listDeletedUsersBefore(cutoff: string): Promise<UserRecord[]> { return [...this.data.users.values()].filter((user: UserRecord) => !!user.deletedAt && user.deletedAt < cutoff); }
+  async purgeUserData(userId: string): Promise<void> {
+    for (const collection of ["recordings", "songs", "song_jobs", "usage_quotas", "sessions", "identities"] as const) for (const record of this.data[collection].values()) if (record.userId === userId) this.delete(collection, record.id);
+    this.delete("users", userId);
+  }
+  async deleteIdentitiesForUser(userId: string): Promise<void> {
+    for (const identity of await this.listIdentitiesForUser(userId)) this.delete("identities", identity.id);
+  }
+  async listRecordingsForUser(userId: string): Promise<RecordingRecord[]> {
+    return [...this.data.recordings.values()].filter((record: RecordingRecord) => record.userId === userId);
+  }
   async createUser(input: Partial<UserRecord> = {}): Promise<UserRecord> {
     const { id: _id, _id: _docId, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = input;
     return this.insert("users", withoutUndefined(rest));
@@ -162,6 +173,9 @@ export class InMemoryRepository implements Demo2SongRepository {
   async createRecording(input: CreateRecordingInput): Promise<RecordingRecord> {
     return this.insert("recordings", input);
   }
+
+  async updateRecording(id: string, patch: Partial<RecordingRecord>): Promise<void> { this.update("recordings", id, patch); }
+  async listJobsForUser(userId: string): Promise<SongJobRecord[]> { return [...this.data.song_jobs.values()].filter((job: SongJobRecord) => job.userId === userId); }
 
   async findRecordingForUser(id: string, userId: string): Promise<RecordingRecord | null> {
     const record = this.data.recordings.get(id) as RecordingRecord | undefined;

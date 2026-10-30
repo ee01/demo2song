@@ -22,6 +22,7 @@ export interface UserRecord extends BaseRecord {
   displayName?: string;
   mergedInto?: string;
   deletedAt?: string;
+  devices?: Array<{ apnsToken: string; env: "sandbox" | "production" }>;
 }
 
 export interface IdentityRecord extends BaseRecord {
@@ -89,6 +90,7 @@ export interface SongJobRecord extends BaseRecord {
   errorCode?: string;
   errorMessage?: string;
   lockedAt?: string;
+  subscriptions?: Array<{ channel: "wechat_subscribe" | "apns" | "apns_live_activity"; token?: string; sentAt?: string; error?: string }>;
   notificationAccepted?: boolean;
   notificationSentAt?: string;
   notificationError?: string;
@@ -134,6 +136,10 @@ export interface Demo2SongRepository {
   listIdentitiesForUser(userId: string): Promise<IdentityRecord[]>;
   createIdentity(input: Omit<IdentityRecord, keyof BaseRecord>): Promise<IdentityRecord>;
   updateIdentity(id: string, patch: Partial<IdentityRecord>): Promise<void>;
+  listDeletedUsersBefore(cutoff: string): Promise<UserRecord[]>;
+  purgeUserData(userId: string): Promise<void>;
+  deleteIdentitiesForUser(userId: string): Promise<void>;
+  listRecordingsForUser(userId: string): Promise<RecordingRecord[]>;
   createUser(input?: Partial<UserRecord>): Promise<UserRecord>;
   updateUser(id: string, patch: Partial<UserRecord>): Promise<void>;
   createSession(input: Omit<SessionRecord, keyof BaseRecord>): Promise<SessionRecord>;
@@ -146,6 +152,8 @@ export interface Demo2SongRepository {
   createMergeLog(input: Omit<MergeLogRecord, keyof BaseRecord>): Promise<MergeLogRecord>;
   updateMergeLog(id: string, patch: Partial<MergeLogRecord>): Promise<void>;
   createRecording(input: CreateRecordingInput): Promise<RecordingRecord>;
+  updateRecording(id: string, patch: Partial<RecordingRecord>): Promise<void>;
+  listJobsForUser(userId: string): Promise<SongJobRecord[]>;
   findRecordingForUser(id: string, userId: string): Promise<RecordingRecord | null>;
   getRecordingById(id: string): Promise<RecordingRecord | null>;
   createSong(input: CreateSongInput): Promise<SongRecord>;

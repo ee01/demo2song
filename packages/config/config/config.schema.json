@@ -3,17 +3,37 @@
   "title": "Demo2SongConfig",
   "type": "object",
   "additionalProperties": false,
-  "required": ["defaultProvider", "models", "limits", "storage", "features"],
+  "required": [
+    "defaultProvider",
+    "models",
+    "limits",
+    "storage",
+    "features"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
-    "defaultProvider": { "enum": ["minimax", "mureka"] },
+    "$schema": {
+      "type": "string"
+    },
+    "defaultProvider": {
+      "enum": [
+        "minimax",
+        "mureka"
+      ]
+    },
     "models": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["minimax", "mureka"],
+      "required": [
+        "minimax",
+        "mureka"
+      ],
       "properties": {
-        "minimax": { "$ref": "#/$defs/modelConfig" },
-        "mureka": { "$ref": "#/$defs/modelConfig" }
+        "minimax": {
+          "$ref": "#/$defs/modelConfig"
+        },
+        "mureka": {
+          "$ref": "#/$defs/modelConfig"
+        }
       }
     },
     "limits": {
@@ -30,25 +50,76 @@
         "refundQuotaOnProviderFailure"
       ],
       "properties": {
-        "minRecordingSeconds": { "type": "integer", "minimum": 1, "maximum": 30 },
-        "maxRecordingSeconds": { "type": "integer", "minimum": 5, "maximum": 360 },
-        "demoTargetSeconds": { "type": "integer", "minimum": 15, "maximum": 90 },
-        "fullSongMinSeconds": { "type": "integer", "minimum": 60, "maximum": 600 },
-        "fullSongMaxSeconds": { "type": "integer", "minimum": 60, "maximum": 600 },
-        "dailyDemoJobsPerUser": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "dailyExtendJobsPerUser": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "refundQuotaOnProviderFailure": { "type": "boolean" }
+        "minRecordingSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "maxRecordingSeconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 360
+        },
+        "demoTargetSeconds": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 90
+        },
+        "fullSongMinSeconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 600
+        },
+        "fullSongMaxSeconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 600
+        },
+        "dailyDemoJobsPerUser": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dailyExtendJobsPerUser": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "refundQuotaOnProviderFailure": {
+          "type": "boolean"
+        }
       }
     },
     "storage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["provider", "recordingRetention", "songRetention", "signedUrlTtlSeconds"],
+      "required": [
+        "provider",
+        "recordingRetention",
+        "songRetention",
+        "signedUrlTtlSeconds"
+      ],
       "properties": {
-        "provider": { "enum": ["cos"] },
-        "recordingRetention": { "enum": ["permanent"] },
-        "songRetention": { "enum": ["permanent"] },
-        "signedUrlTtlSeconds": { "type": "integer", "minimum": 60, "maximum": 86400 }
+        "provider": {
+          "enum": [
+            "cos"
+          ]
+        },
+        "recordingRetention": {
+          "enum": [
+            "permanent"
+          ]
+        },
+        "songRetention": {
+          "enum": [
+            "permanent"
+          ]
+        },
+        "signedUrlTtlSeconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400
+        }
       }
     },
     "features": {
@@ -60,9 +131,81 @@
         "enableCommercialUseGate"
       ],
       "properties": {
-        "enableExtendSong": { "type": "boolean" },
-        "enableApproximateMinimaxExtend": { "type": "boolean" },
-        "enableCommercialUseGate": { "type": "boolean" }
+        "enableExtendSong": {
+          "type": "boolean"
+        },
+        "enableApproximateMinimaxExtend": {
+          "type": "boolean"
+        },
+        "enableCommercialUseGate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "styles",
+        "moods",
+        "languages",
+        "genders"
+      ],
+      "properties": {
+        "styles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "moods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "languages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "value"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "genders": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "value"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
       }
     }
   },
@@ -70,11 +213,23 @@
     "modelConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["demoModel", "fullModel", "allowPaidModels"],
+      "required": [
+        "demoModel",
+        "fullModel",
+        "allowPaidModels"
+      ],
       "properties": {
-        "demoModel": { "type": "string", "minLength": 1 },
-        "fullModel": { "type": "string", "minLength": 1 },
-        "allowPaidModels": { "type": "boolean" }
+        "demoModel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fullModel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowPaidModels": {
+          "type": "boolean"
+        }
       }
     }
   }

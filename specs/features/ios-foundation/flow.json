@@ -1,0 +1,1 @@
+{"initial":"idle","states":{"idle":{"on":{"record":"recording"}},"recording":{"on":{"stop":"recorded","cancel":"idle"}},"recorded":{"on":{"next":"#compose","retry":"idle"}}}}

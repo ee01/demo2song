@@ -14,6 +14,9 @@ export class WorkerCosStorage {
     });
   }
 
+  async deleteObject(key: string): Promise<void> {
+    await new Promise<void>((resolve, reject) => this.cos.deleteObject({ Bucket: env.COS_BUCKET!, Region: env.COS_REGION, Key: key }, error => error ? reject(error) : resolve()));
+  }
   async getSignedUrl(key: string, ttlSeconds: number): Promise<string> {
     return new Promise((resolve, reject) => {
       this.cos.getObjectUrl(

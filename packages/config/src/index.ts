@@ -13,6 +13,7 @@ export interface ProviderModelConfig {
 
 export interface Demo2SongConfig {
   $schema?: string;
+  options?: { styles: string[]; moods: string[]; languages: Array<{ label: string; value: string }>; genders: Array<{ label: string; value: string }> };
   defaultProvider: ConfigProviderName;
   models: Record<ConfigProviderName, ProviderModelConfig>;
   limits: {

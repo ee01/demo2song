@@ -86,7 +86,7 @@ export default function LibraryPage() {
       <View className="glow glow-2" />
       <View className="screen library-screen">
         <View className="head">
-          <Text className="head-title">我的音频</Text>
+          <Text data-ui="library.title" className="head-title">我的音频</Text>
           <Text className="head-desc">这里收藏了你创作的 demo 与完整歌曲</Text>
         </View>
 

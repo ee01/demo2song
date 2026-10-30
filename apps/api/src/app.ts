@@ -1,3 +1,4 @@
+import { accountRoutes } from "./routes/account.js";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import type { FastifyInstance } from "fastify";
@@ -14,6 +15,7 @@ import { songRoutes } from "./routes/songs.js";
 async function mountApiRoutes(app: FastifyInstance): Promise<void> {
   await configRoutes(app);
   await authRoutes(app);
+  await accountRoutes(app);
   await recordingRoutes(app);
   await songRoutes(app);
   await jobRoutes(app);

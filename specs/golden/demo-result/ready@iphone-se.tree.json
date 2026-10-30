@@ -1,0 +1,72 @@
+[
+  {
+    "id": "demo-result.nav",
+    "text": "随哼我的作品",
+    "box": {
+      "x": 24,
+      "y": 24,
+      "width": 327,
+      "height": 22,
+      "top": 24,
+      "right": 351,
+      "bottom": 46,
+      "left": 24
+    }
+  },
+  {
+    "id": "demo-result.title",
+    "text": "旧街晚风",
+    "box": {
+      "x": 24,
+      "y": 70,
+      "width": 327,
+      "height": 29,
+      "top": 70,
+      "right": 351,
+      "bottom": 99,
+      "left": 24
+    }
+  },
+  {
+    "id": "demo-result.ai-label",
+    "text": "AI 生成",
+    "box": {
+      "x": 24,
+      "y": 118.0625,
+      "width": 37.125,
+      "height": 16,
+      "top": 118.0625,
+      "right": 61.125,
+      "bottom": 134.0625,
+      "left": 24
+    }
+  },
+  {
+    "id": "demo-result.play",
+    "text": "播放",
+    "box": {
+      "x": 40,
+      "y": 167.0625,
+      "width": 64,
+      "height": 54,
+      "top": 167.0625,
+      "right": 104,
+      "bottom": 221.0625,
+      "left": 40
+    }
+  },
+  {
+    "id": "demo-result.lyrics",
+    "text": "[Verse]\n风经过旧街角\n[Chorus]\n让旋律陪你到天明",
+    "box": {
+      "x": 24,
+      "y": 310.65625,
+      "width": 327,
+      "height": 88,
+      "top": 310.65625,
+      "right": 351,
+      "bottom": 398.65625,
+      "left": 24
+    }
+  }
+]

@@ -30,8 +30,8 @@ async function toPlaybackUrl(song: SongRecord): Promise<string | undefined> {
   return getObjectStorage().getPublicOrSignedUrl(song.objectKey, config.storage.signedUrlTtlSeconds);
 }
 
-async function toBrief(song: SongRecord): Promise<SongBrief> {
-  const job = await repository.findJobForSongForUser(song.id, song.userId);
+async function toBrief(song: SongRecord, knownJob?: { id: string } | null): Promise<SongBrief> {
+  const job = knownJob === undefined ? await repository.findJobForSongForUser(song.id, song.userId) : knownJob;
   return {
     id: song.id,
     userId: song.userId,
@@ -58,7 +58,7 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
 
     const body = demoJobSchema.parse(request.body);
     const recording = await repository.findRecordingForUser(body.recordingId, userId);
-    if (!recording) {
+    if (!recording || recording.rawMeta?.uploadComplete === false) {
       return reply.code(404).send({ error: "RECORDING_NOT_FOUND" });
     }
 
@@ -191,16 +191,11 @@ export async function songRoutes(app: FastifyInstance): Promise<void> {
     if (!userId) return;
 
     const songs = await repository.listSongsForUser(userId);
-    const demoSongs: SongBrief[] = [];
-    for (const song of songs.filter((item) => item.stage === "demo")) {
-      const fullCount = await repository.countReadyFullForDemo(song.id);
-      if (fullCount === 0) {
-        demoSongs.push(await toBrief(song));
-      }
-    }
-    const fullSongs = await Promise.all(
-      songs.filter((item) => item.stage === "full").map((item) => toBrief(item))
-    );
+    const jobs = await repository.listJobsForUser(userId);
+    const jobsBySong = new Map(jobs.map((job) => [job.songId, job]));
+    const readyParents = new Set(songs.filter((song) => song.stage === "full" && song.status === "ready").map((song) => song.parentSongId));
+    const demoSongs = await Promise.all(songs.filter((song) => song.stage === "demo" && !readyParents.has(song.id)).map((song) => toBrief(song, jobsBySong.get(song.id) ?? null)));
+    const fullSongs = await Promise.all(songs.filter((song) => song.stage === "full").map((song) => toBrief(song, jobsBySong.get(song.id) ?? null)));
 
     return reply.send({ demos: demoSongs, fullSongs });
   });

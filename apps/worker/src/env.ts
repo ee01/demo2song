@@ -18,6 +18,11 @@ const envSchema = z.object({
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
   // 云托管就绪探针会探测此端口；worker 无业务 HTTP，仅提供 /health
   WORKER_PORT: z.coerce.number().int().positive().default(3000),
+  APNS_KEY_ID: z.string().optional(),
+  APNS_TEAM_ID: z.string().optional(),
+  APNS_PRIVATE_KEY: z.string().optional(),
+  APNS_BUNDLE_ID: z.string().optional(),
+  APNS_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
   WECHAT_APP_ID: z.string().optional(),
   WECHAT_APP_SECRET: z.string().optional(),
   WECHAT_SUBSCRIBE_TEMPLATE_ID: z.string().optional()

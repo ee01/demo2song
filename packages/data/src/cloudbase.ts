@@ -90,6 +90,19 @@ export class CloudBaseRepository implements Demo2SongRepository {
     await this.updateById("identities", id, patch);
   }
 
+  async listDeletedUsersBefore(cutoff: string): Promise<UserRecord[]> { return (await this.listAll<UserRecord>("users", { deletedAt: this.db.command.lt(cutoff) })).filter(user => !!user.deletedAt); }
+  async purgeUserData(userId: string): Promise<void> {
+    for (const collection of ["recordings", "songs", "song_jobs", "usage_quotas", "sessions", "identities"] as const) {
+      for (const record of await this.listAll<{ id: string }>(collection, { userId })) await this.deleteById(collection, record.id);
+    }
+    await this.deleteById("users", userId);
+  }
+  async deleteIdentitiesForUser(userId: string): Promise<void> {
+    await this.db.collection("identities").where({ userId }).remove();
+  }
+  async listRecordingsForUser(userId: string): Promise<RecordingRecord[]> {
+    return this.listAll<RecordingRecord>("recordings", { userId });
+  }
   async createUser(input: Partial<UserRecord> = {}): Promise<UserRecord> {
     const { id: _id, _id: _docId, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = input;
     return this.insert<UserRecord>("users", withoutUndefined(rest));
@@ -155,6 +168,9 @@ export class CloudBaseRepository implements Demo2SongRepository {
   async createRecording(input: CreateRecordingInput): Promise<RecordingRecord> {
     return this.insert<RecordingRecord>("recordings", input);
   }
+
+  async updateRecording(id: string, patch: Partial<RecordingRecord>): Promise<void> { await this.updateById("recordings", id, patch); }
+  async listJobsForUser(userId: string): Promise<SongJobRecord[]> { return this.listAll<SongJobRecord>("song_jobs", { userId }); }
 
   async findRecordingForUser(id: string, userId: string): Promise<RecordingRecord | null> {
     return this.findOne<RecordingRecord>("recordings", { id, userId });

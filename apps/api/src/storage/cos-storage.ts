@@ -15,6 +15,12 @@ export class CosObjectStorage implements ObjectStorage {
     });
   }
 
+  async getUploadUrl(key: string, contentType: string, byteSize: number): Promise<string> {
+    return new Promise((resolve, reject) => this.cos.getObjectUrl({ Bucket: env.COS_BUCKET!, Region: env.COS_REGION, Key: key, Method: "PUT", Sign: true, Expires: 600, Headers: { "content-type": contentType, "content-length": String(byteSize) } }, (error, data) => error ? reject(error) : resolve(data.Url)));
+  }
+  async headObject(key: string): Promise<{ byteSize: number; contentType: string }> {
+    return new Promise((resolve, reject) => this.cos.headObject({ Bucket: env.COS_BUCKET!, Region: env.COS_REGION, Key: key }, (error, data) => error ? reject(error) : resolve({ byteSize: Number(data.headers?.["content-length"]), contentType: String(data.headers?.["content-type"]) })));
+  }
   async putObject(input: PutObjectInput): Promise<{ key: string }> {
     await new Promise<void>((resolve, reject) => {
       this.cos.putObject(

@@ -1,0 +1,15 @@
+scenarios:
+  - name: 录音后进入创作
+    screen: record
+    state: recorded
+    steps:
+      - tap: record.next
+      - expect: { screen: compose }
+      - expect: { visible: compose.submit }
+  - name: 登录后进入录音
+    screen: login
+    state: idle
+    steps:
+      - tap: login.wechat
+      - expect: { screen: record }
+      - expect: { visible: record.hold }

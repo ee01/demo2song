@@ -9,10 +9,15 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().int().positive().default(3100),
   WECHAT_APP_ID: z.string().optional(),
   WECHAT_APP_SECRET: z.string().optional(),
+  APPLE_BUNDLE_ID: z.string().optional(),
+  APPLE_TEAM_ID: z.string().optional(),
+  APPLE_KEY_ID: z.string().optional(),
+  APPLE_PRIVATE_KEY: z.string().optional(),
+  IDENTITY_ENCRYPTION_KEY: z.string().optional(),
   WECHAT_OPEN_APP_ID: z.string().optional(),
   WECHAT_OPEN_APP_SECRET: z.string().optional(),
   WECHAT_LOGIN_STRICT: z.preprocess((value) => {
-    if (value === undefined || value === "") return false;
+    if (value === undefined || value === "") return process.env.NODE_ENV === "production";
     if (value === true || value === "true" || value === "1") return true;
     if (value === false || value === "false" || value === "0") return false;
     return value;

@@ -143,7 +143,7 @@ export default function FullPage() {
         <View className="glow glow-2" />
         <View className="screen center-screen">
           <View className="spinner" />
-          <Text className="head-title">正在生成完整版…</Text>
+          <Text data-ui="full-compose.title" className="head-title">正在生成完整版…</Text>
           <Text className="head-desc">完整歌曲耗时更久，大约 1-2 分钟，请耐心等待</Text>
         </View>
       </View>
@@ -201,7 +201,7 @@ export default function FullPage() {
         >
           返回
         </View>
-        <View className={`primary ${submitting ? "loading disabled" : ""}`} onClick={generateFull}>
+        <View data-ui="full-compose.submit" className={`primary ${submitting ? "loading disabled" : ""}`} onClick={generateFull}>
           {submitting ? (
             <View className="btn-loading">
               <View className="btn-spinner" />

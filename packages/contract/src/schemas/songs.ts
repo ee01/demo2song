@@ -171,6 +171,7 @@ export const publicAppConfigSchema = z
     maxRecordingSeconds: z.number(),
     demoTargetSeconds: z.number(),
     enableFullSong: z.boolean(),
+    options: z.object({ styles: z.array(z.string()), moods: z.array(z.string()), languages: z.array(z.object({label: z.string(), value: z.string()})), genders: z.array(z.object({label: z.string(), value: z.string()})) }).optional(),
     generationNoticeTemplateId: z.string().optional()
   })
   .openapi("PublicAppConfig");

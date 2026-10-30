@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: 随哼 API
   version: 1.0.0
-  description: 随哼 /v1 契约。微信小程序登录、微信移动应用登录、刷新、退出和 /v1/me 已实现，两端登录命中同一个用户。Apple 登录、绑定合并和注销尚未实现。过渡登录 POST /v1/auth/wechat-login 仍返回 userId。
+  description: 随哼 /v1 契约。微信小程序登录、微信移动应用登录、刷新、退出和 /v1/me 已实现，两端登录命中同一个用户。支持 Apple 登录、绑定合并和注销。过渡登录 POST /v1/auth/wechat-login 仍返回 userId。
 servers:
   - url: https://api.demo2song.eexx.me
 tags:
@@ -63,6 +63,46 @@ components:
           type: number
         enableFullSong:
           type: boolean
+        options:
+          type: object
+          properties:
+            styles:
+              type: array
+              items:
+                type: string
+            moods:
+              type: array
+              items:
+                type: string
+            languages:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - label
+                  - value
+            genders:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - label
+                  - value
+          required:
+            - styles
+            - moods
+            - languages
+            - genders
         generationNoticeTemplateId:
           type: string
       required:
@@ -554,6 +594,75 @@ components:
         - id
         - stage
         - status
+    UploadTicket:
+      type: object
+      properties:
+        recordingId:
+          type: string
+        putUrl:
+          type: string
+          format: uri
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expiresAt:
+          type: string
+      required:
+        - recordingId
+        - putUrl
+        - headers
+        - expiresAt
+    UploadUrlRequest:
+      type: object
+      properties:
+        mimeType:
+          type: string
+          enum:
+            - audio/mp4
+            - audio/mpeg
+            - audio/wav
+        byteSize:
+          type: integer
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 20971520
+        durationSeconds:
+          type: number
+          minimum: 6
+          maximum: 60
+      required:
+        - mimeType
+        - byteSize
+        - durationSeconds
+    SubscriptionRequest:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum:
+            - wechat_subscribe
+            - apns
+            - apns_live_activity
+        token:
+          type: string
+          pattern: ^[a-fA-F0-9]{32,256}$
+      required:
+        - channel
+    DeviceRequest:
+      type: object
+      properties:
+        apnsToken:
+          type: string
+          pattern: ^[a-fA-F0-9]{32,256}$
+        env:
+          type: string
+          enum:
+            - sandbox
+            - production
+      required:
+        - apnsToken
+        - env
   parameters: {}
 paths:
   /health:
@@ -1191,6 +1300,162 @@ paths:
               schema:
                 $ref: "#/components/schemas/PublicSong"
         "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/recordings/upload-url:
+    post:
+      operationId: createUploadTicket
+      tags:
+        - recordings
+      summary: 获取录音直传地址
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: 直传凭据
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadTicket"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/recordings/{id}/complete:
+    post:
+      operationId: completeRecording
+      tags:
+        - recordings
+      summary: 确认上传
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 录音
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HummingRecording"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/jobs/{id}/subscriptions:
+    post:
+      operationId: subscribeToJob
+      tags:
+        - jobs
+      summary: 订阅任务
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionRequest"
+      responses:
+        "200":
+          description: 完成
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/me/devices:
+    post:
+      operationId: registerDevice
+      tags:
+        - auth
+      summary: 注册推送设备
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceRequest"
+      responses:
+        "200":
+          description: 完成
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/jobs/{id}/events:
+    get:
+      operationId: jobEvents
+      tags:
+        - jobs
+      summary: 任务状态 SSE
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 状态事件
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
           description: 错误
           content:
             application/json:

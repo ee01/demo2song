@@ -15,7 +15,8 @@
     "@demo2song/shared": "0.1.0",
     "cos-nodejs-sdk-v5": "^2.14.7",
     "dotenv": "^16.4.7",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "jose": "^5.10.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

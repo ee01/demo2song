@@ -21,5 +21,10 @@
   "SESSION_REVOKED": "登录已退出，请重新登录",
   "SESSION_REPLAYED": "登录状态已失效，请重新登录",
   "ACCOUNT_UNAVAILABLE": "这个账号已停用",
-  "WECHAT_LOGIN_FAILED": "微信登录失败，请重试"
+  "WECHAT_LOGIN_FAILED": "微信登录失败，请重试",
+  "APPLE_LOGIN_FAILED": "Apple 登录失败，请重新授权",
+  "IDENTITY_VERIFICATION_FAILED": "身份验证失败，请重试",
+  "MERGE_FAILED": "账号合并暂未完成，请重试",
+  "APPLE_REVOKE_FAILED": "Apple 授权撤销失败，请稍后重试",
+  "UPLOAD_MISMATCH": "上传文件大小或类型不符，请重新上传"
 }

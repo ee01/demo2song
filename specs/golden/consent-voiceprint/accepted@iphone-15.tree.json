@@ -1,0 +1,59 @@
+[
+  {
+    "id": "consent-voiceprint.nav",
+    "text": "随哼我的作品",
+    "box": {
+      "x": 24,
+      "y": 24,
+      "width": 342,
+      "height": 22,
+      "top": 24,
+      "right": 366,
+      "bottom": 46,
+      "left": 24
+    }
+  },
+  {
+    "id": "consent-voiceprint.title",
+    "text": "声纹授权协议",
+    "box": {
+      "x": 24,
+      "y": 70,
+      "width": 342,
+      "height": 29,
+      "top": 70,
+      "right": 366,
+      "bottom": 99,
+      "left": 24
+    }
+  },
+  {
+    "id": "consent-voiceprint.body",
+    "text": "你确认拥有录音的合法使用权，并授权随哼将录音发送至音乐生成服务，用于生成你请求的歌曲。请勿上传他人未经授权的声音。",
+    "box": {
+      "x": 24,
+      "y": 115,
+      "width": 342,
+      "height": 76.78125,
+      "top": 115,
+      "right": 366,
+      "bottom": 191.78125,
+      "left": 24
+    }
+  },
+  {
+    "id": "consent-voiceprint.agree",
+    "copy": "consent.agree",
+    "text": "同意",
+    "box": {
+      "x": 24,
+      "y": 207.78125,
+      "width": 64,
+      "height": 54,
+      "top": 207.78125,
+      "right": 88,
+      "bottom": 261.78125,
+      "left": 24
+    }
+  }
+]

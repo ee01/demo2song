@@ -491,11 +491,21 @@ apps/ios/
 > 编号 = 建议的子 issue。**依赖** 列出必须先完成的任务。每个任务都要满足 §10 的通用 DoD。
 > 角色：`BE` 后端 · `MP` 小程序 · `PX` 原型/设计工程 · `HX` Harness · `IOS` iOS · `E` 需要你本人操作。
 
-### 实现进度（2026-10-28）
+### 实现进度（2026-10-30，真机准备）
 
-已落地：T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3。T2.4 取消（不迁数据，登录直接命中原用户）。
+M1、T2.1–T2.3 已由 `feat/m1-foundation` 接入。T2.4 取消，仍然共用同一微信用户。
 
-尚未开始：T2.5–T2.9（T2.6 中的微信 App 登录已随 T2.3 完成，剩下 Apple）、T3.1–T3.8、T4.1–T4.7、T5.1–T5.13、T6.1–T6.4，以及外部前置 X1–X6。
+| 范围 | 本轮落地 | 尚待验收 / 未完成 |
+|---|---|---|
+| T2.5–T2.8 | 小程序 Bearer + 自动刷新；Apple JWKS/授权码交换；绑定、显式合并、注销、30天清理；API/数据测试 | 微信开发者工具 E2E、真实 Apple 撤销、CloudBase 集成验收 |
+| T2.9 | 保留生产兼容开关 | 必须满足小程序发版满两周，不提前关闭 |
+| M3 | 11屏原型、10组fixture、golden/交互验收、codegen/flow/UIID、capture/diff/report/verify骨架与CLI、CI模板（待启用）；生产包剔除fixture | 原型需E评审；小程序query状态覆盖与全量锚点仍需补齐；真实两端采集/视觉对齐未通过；视觉评审目前为rubric，不自动调用agent |
+| T4.1–T4.7 | m4a直传与HEAD校验、SSE、订阅/设备、APNs/Live Activity notifier、批量曲库、分享H5/AASA构建、ID3 AI标签 | 云端凭据/域名部署、真实APNs、微信开放标签、50首P95基准仍待外部环境与专项验收 |
+| T5.1–T5.13 | XcodeGen/SPM/官方Swift生成客户端；SwiftUI登录、录音、AAC草稿、试听/锁屏、创作/歌词/曲库、绑定/合并/注销；官方微信SDK、系统/微信分享、Live Activity、Widget/Control/App Intent | 设备与模拟器SDK编译通过；尚未安装手机或运行XCUITest；组件截图、全状态fixture与视觉对齐、微信/推送/硬件验收仍待真机与runtime |
+| T6.1 | 隐私清单初稿、麦克风用途与本地网络文案 | 需结合实际部署/SDK数据行为复核 |
+| T6.2–T6.4 / X1–X6 | 真机配置模板与验收手册 | 外部账号/标识/密钥/域名/资质由E确认；未执行真实部署、TestFlight或提审 |
+
+真机接入步骤、测试证据和本机限制见 `docs/ios/device-testing.md`。编译或模拟服务测试不能替代真机验收，`specs/parity.yaml` 对缺失端截图保持 `unverified`。
 
 ### 9.0 外部前置（E）
 

@@ -1,0 +1,12 @@
+screens:
+  - { id: record, title: 哼唱录音, states: [idle, permission-denied, recording, too-short, recorded], default-fixture: user-new, platforms: { mp: pages/index/index, ios: RecordView } }
+  - { id: compose, title: 补充信息, states: [empty, filled, long-text, uploading, submitting, error-quota, error-network], default-fixture: user-new, platforms: { mp: pages/index/index, ios: ComposeView } }
+  - { id: generating, title: 生成进度, states: [queued, running, failed, succeeded], default-fixture: job-running, platforms: { mp: pages/generation/index, ios: GeneratingView } }
+  - { id: demo-result, title: Demo 试听, states: [ready, loading, error], default-fixture: song-demo-ready, platforms: { mp: pages/song/index, ios: SongView } }
+  - { id: song, title: 歌曲, states: [ready, loading, error, long-text], default-fixture: song-full-ready, platforms: { mp: pages/song/index, ios: SongView } }
+  - { id: full-compose, title: 生成完整版, states: [idle, drafting, draft-ready, submitting, error-quota, error-network], default-fixture: long-lyrics, platforms: { mp: pages/full/index, ios: FullComposeView } }
+  - { id: library, title: 我的作品, states: [empty, loading, error, ready, many-songs], default-fixture: user-with-songs, platforms: { mp: pages/library/index, ios: LibraryView } }
+  - { id: share-landing, title: 分享试听, states: [ready, loading, error], default-fixture: song-full-ready, platforms: { mp: pages/play/index, ios: SongView } }
+  - { id: consent-voiceprint, title: 声纹授权, states: [idle, accepted], default-fixture: user-new, platforms: { mp: pages/voiceprint-agreement/index, ios: ConsentView } }
+  - { id: login, title: 登录, states: [idle, signing-in, error, merge-required], default-fixture: user-new, platforms: { ios: LoginView } }
+  - { id: account, title: 账号, states: [ready, loading, error, merge-required, deleting], default-fixture: user-with-songs, platforms: { ios: AccountView } }

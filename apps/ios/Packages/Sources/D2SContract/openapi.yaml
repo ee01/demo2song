@@ -1,0 +1,1463 @@
+openapi: 3.0.3
+info:
+  title: 随哼 API
+  version: 1.0.0
+  description: 随哼 /v1 契约。微信小程序登录、微信移动应用登录、刷新、退出和 /v1/me 已实现，两端登录命中同一个用户。支持 Apple 登录、绑定合并和注销。过渡登录 POST /v1/auth/wechat-login 仍返回 userId。
+servers:
+  - url: https://api.demo2song.eexx.me
+tags:
+  - name: meta
+    description: 运维
+  - name: config
+    description: 配置
+  - name: auth
+    description: 登录与账号
+  - name: recordings
+    description: 录音
+  - name: songs
+    description: 歌曲与生成
+  - name: jobs
+    description: 任务
+  - name: public
+    description: 无需登录
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: /v1 访问令牌。旧路由在 LEGACY_HEADER_AUTH 开启时仍接受 x-user-id。
+  schemas:
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum:
+            - true
+      required:
+        - ok
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            params:
+              type: object
+              additionalProperties: true
+          required:
+            - code
+      required:
+        - error
+    PublicAppConfig:
+      type: object
+      properties:
+        minRecordingSeconds:
+          type: number
+        maxRecordingSeconds:
+          type: number
+        demoTargetSeconds:
+          type: number
+        enableFullSong:
+          type: boolean
+        options:
+          type: object
+          properties:
+            styles:
+              type: array
+              items:
+                type: string
+            moods:
+              type: array
+              items:
+                type: string
+            languages:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - label
+                  - value
+            genders:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - label
+                  - value
+          required:
+            - styles
+            - moods
+            - languages
+            - genders
+        generationNoticeTemplateId:
+          type: string
+      required:
+        - minRecordingSeconds
+        - maxRecordingSeconds
+        - demoTargetSeconds
+        - enableFullSong
+    LegacyLoginResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId
+    WechatCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+      required:
+        - code
+    IdentityProvider:
+      type: string
+      enum:
+        - wechat_mp
+        - wechat_app
+        - apple
+    Me:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        identities:
+          type: array
+          items:
+            type: object
+            properties:
+              provider:
+                $ref: "#/components/schemas/IdentityProvider"
+              linkedAt:
+                type: string
+            required:
+              - provider
+              - linkedAt
+      required:
+        - id
+        - identities
+    AuthResult:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        user:
+          $ref: "#/components/schemas/Me"
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - user
+    AppleLoginRequest:
+      type: object
+      properties:
+        identityToken:
+          type: string
+          minLength: 1
+        authorizationCode:
+          type: string
+          minLength: 1
+        fullName:
+          type: string
+          maxLength: 120
+      required:
+        - identityToken
+        - authorizationCode
+    RefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required:
+        - refreshToken
+    MergeRequired:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - MERGE_REQUIRED
+            params:
+              type: object
+              properties:
+                mergeToken:
+                  type: string
+                target:
+                  type: object
+                  properties:
+                    songCount:
+                      type: integer
+                    recordingCount:
+                      type: integer
+                    lastActiveAt:
+                      type: string
+                  required:
+                    - songCount
+                    - recordingCount
+                    - lastActiveAt
+                current:
+                  type: object
+                  properties:
+                    songCount:
+                      type: integer
+                    recordingCount:
+                      type: integer
+                  required:
+                    - songCount
+                    - recordingCount
+              required:
+                - mergeToken
+                - target
+                - current
+          required:
+            - code
+            - params
+      required:
+        - error
+    LinkIdentityRequest:
+      oneOf:
+        - type: object
+          properties:
+            provider:
+              type: string
+              enum:
+                - wechat_app
+            code:
+              type: string
+              minLength: 1
+          required:
+            - provider
+            - code
+        - type: object
+          properties:
+            provider:
+              type: string
+              enum:
+                - apple
+            identityToken:
+              type: string
+              minLength: 1
+            authorizationCode:
+              type: string
+              minLength: 1
+            fullName:
+              type: string
+              maxLength: 120
+          required:
+            - provider
+            - identityToken
+            - authorizationCode
+    MergeRequest:
+      type: object
+      properties:
+        mergeToken:
+          type: string
+          minLength: 1
+      required:
+        - mergeToken
+    HummingRecording:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        objectKey:
+          type: string
+        mimeType:
+          type: string
+        durationSeconds:
+          type: number
+        originalFilename:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - objectKey
+        - mimeType
+        - durationSeconds
+        - createdAt
+    RecordingUpload:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: 音频文件
+        durationSeconds:
+          type: string
+          description: 录音时长（秒），表单字段
+      required:
+        - file
+        - durationSeconds
+    JobStatus:
+      type: string
+      enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+    CreateDemoJobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        songId:
+          type: string
+        status:
+          $ref: "#/components/schemas/JobStatus"
+      required:
+        - jobId
+        - songId
+        - status
+    SongLanguage:
+      type: string
+      enum:
+        - zh
+        - en
+        - ja
+        - ko
+        - auto
+      default: zh
+    VocalGender:
+      type: string
+      enum:
+        - female
+        - male
+        - mixed
+        - auto
+      default: auto
+    SongPrompt:
+      type: object
+      properties:
+        style:
+          type: string
+          minLength: 1
+          maxLength: 120
+        mood:
+          type: string
+          maxLength: 80
+        language:
+          $ref: "#/components/schemas/SongLanguage"
+        vocalGender:
+          $ref: "#/components/schemas/VocalGender"
+        description:
+          type: string
+          maxLength: 500
+        lyricSeed:
+          type: string
+          maxLength: 1000
+      required:
+        - style
+    CreateDemoJobRequest:
+      type: object
+      properties:
+        recordingId:
+          type: string
+          minLength: 1
+        prompt:
+          $ref: "#/components/schemas/SongPrompt"
+      required:
+        - recordingId
+        - prompt
+    GenerateFullDraftResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        lyrics:
+          type: string
+        styleTags:
+          type: string
+      required:
+        - title
+        - lyrics
+    SongPromptOverride:
+      type: object
+      properties:
+        style:
+          type: string
+          minLength: 1
+          maxLength: 120
+        mood:
+          type: string
+          maxLength: 80
+        language:
+          $ref: "#/components/schemas/SongLanguage"
+        vocalGender:
+          $ref: "#/components/schemas/VocalGender"
+        description:
+          type: string
+          maxLength: 500
+        lyricSeed:
+          type: string
+          maxLength: 1000
+    GenerateFullDraftRequest:
+      type: object
+      properties:
+        prompt:
+          $ref: "#/components/schemas/SongPromptOverride"
+    CreateFullJobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        songId:
+          type: string
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        mode:
+          type: string
+          enum:
+            - regenerate
+            - extend
+      required:
+        - jobId
+        - songId
+        - status
+        - mode
+    CreateFullJobRequest:
+      type: object
+      properties:
+        prompt:
+          $ref: "#/components/schemas/SongPromptOverride"
+        title:
+          type: string
+          maxLength: 80
+        lyrics:
+          type: string
+          maxLength: 3500
+    SongStage:
+      type: string
+      enum:
+        - demo
+        - full
+    SongStatus:
+      type: string
+      enum:
+        - generating
+        - ready
+        - failed
+    ProviderName:
+      type: string
+      enum:
+        - minimax
+        - mureka
+    SongBrief:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        recordingId:
+          type: string
+        stage:
+          $ref: "#/components/schemas/SongStage"
+        status:
+          $ref: "#/components/schemas/SongStatus"
+        title:
+          type: string
+        provider:
+          $ref: "#/components/schemas/ProviderName"
+        objectKey:
+          type: string
+        playbackUrl:
+          type: string
+        durationSeconds:
+          type: number
+        lyrics:
+          type: string
+        createdAt:
+          type: string
+        jobId:
+          type: string
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+      required:
+        - id
+        - userId
+        - recordingId
+        - stage
+        - status
+        - provider
+        - createdAt
+    MySongsResponse:
+      type: object
+      properties:
+        demos:
+          type: array
+          items:
+            $ref: "#/components/schemas/SongBrief"
+        fullSongs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SongBrief"
+      required:
+        - demos
+        - fullSongs
+    SongDetail:
+      allOf:
+        - $ref: "#/components/schemas/SongBrief"
+        - type: object
+          properties:
+            recordingPlaybackUrl:
+              type: string
+            recordingDurationSeconds:
+              type: number
+            parentDemoId:
+              type: string
+            parentDemoPlaybackUrl:
+              type: string
+            hasFull:
+              type: boolean
+            prompt:
+              $ref: "#/components/schemas/SongPrompt"
+    JobDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum:
+            - demo
+            - full
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        provider:
+          $ref: "#/components/schemas/ProviderName"
+        songId:
+          type: string
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - kind
+        - status
+        - provider
+        - createdAt
+        - updatedAt
+    PublicSong:
+      type: object
+      properties:
+        id:
+          type: string
+        stage:
+          $ref: "#/components/schemas/SongStage"
+        status:
+          $ref: "#/components/schemas/SongStatus"
+        title:
+          type: string
+        durationSeconds:
+          type: number
+        lyrics:
+          type: string
+        playbackUrl:
+          type: string
+      required:
+        - id
+        - stage
+        - status
+    UploadTicket:
+      type: object
+      properties:
+        recordingId:
+          type: string
+        putUrl:
+          type: string
+          format: uri
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expiresAt:
+          type: string
+      required:
+        - recordingId
+        - putUrl
+        - headers
+        - expiresAt
+    UploadUrlRequest:
+      type: object
+      properties:
+        mimeType:
+          type: string
+          enum:
+            - audio/mp4
+            - audio/mpeg
+            - audio/wav
+        byteSize:
+          type: integer
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 20971520
+        durationSeconds:
+          type: number
+          minimum: 6
+          maximum: 60
+      required:
+        - mimeType
+        - byteSize
+        - durationSeconds
+    SubscriptionRequest:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum:
+            - wechat_subscribe
+            - apns
+            - apns_live_activity
+        token:
+          type: string
+          pattern: ^[a-fA-F0-9]{32,256}$
+      required:
+        - channel
+    DeviceRequest:
+      type: object
+      properties:
+        apnsToken:
+          type: string
+          pattern: ^[a-fA-F0-9]{32,256}$
+        env:
+          type: string
+          enum:
+            - sandbox
+            - production
+      required:
+        - apnsToken
+        - env
+  parameters: {}
+paths:
+  /health:
+    get:
+      operationId: health
+      tags:
+        - meta
+      summary: 健康检查
+      security: []
+      responses:
+        "200":
+          description: 服务可用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/config/public:
+    get:
+      operationId: getPublicConfig
+      tags:
+        - config
+      summary: 公开配置
+      security: []
+      responses:
+        "200":
+          description: 公开配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppConfig"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/auth/wechat-login:
+    post:
+      operationId: loginWechatLegacy
+      tags:
+        - auth
+      summary: 微信小程序登录（过渡接口，返回 userId）
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WechatCodeRequest"
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LegacyLoginResponse"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/auth/wechat-mp:
+    post:
+      operationId: loginWechatMp
+      tags:
+        - auth
+      summary: 微信小程序登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WechatCodeRequest"
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/auth/wechat-app:
+    post:
+      operationId: loginWechatApp
+      tags:
+        - auth
+      summary: 微信移动应用登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WechatCodeRequest"
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/auth/apple:
+    post:
+      operationId: loginApple
+      tags:
+        - auth
+      summary: Sign in with Apple
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppleLoginRequest"
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/auth/refresh:
+    post:
+      operationId: refreshSession
+      tags:
+        - auth
+      summary: 刷新访问令牌
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: 新的令牌
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags:
+        - auth
+      summary: 退出登录
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: 已退出
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/me:
+    get:
+      operationId: getMe
+      tags:
+        - auth
+      summary: 当前用户
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 当前用户
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteMe
+      tags:
+        - auth
+      summary: 注销账号
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: 已注销
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/me/identities:
+    post:
+      operationId: linkIdentity
+      tags:
+        - auth
+      summary: 绑定微信或 Apple
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkIdentityRequest"
+      responses:
+        "200":
+          description: 绑定成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 需要合并账号
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergeRequired"
+  /v1/me/merge:
+    post:
+      operationId: mergeAccounts
+      tags:
+        - auth
+      summary: 确认合并账号
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergeRequest"
+      responses:
+        "200":
+          description: 合并完成，令牌属于存活用户
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/recordings:
+    post:
+      operationId: createRecording
+      tags:
+        - recordings
+      summary: 上传哼唱录音
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/RecordingUpload"
+      responses:
+        "201":
+          description: 录音已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HummingRecording"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/songs/demo-jobs:
+    post:
+      operationId: createDemoJob
+      tags:
+        - songs
+      summary: 提交 demo 生成
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDemoJobRequest"
+      responses:
+        "201":
+          description: 任务已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateDemoJobResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/songs/{id}/full-draft:
+    post:
+      operationId: createFullDraft
+      tags:
+        - songs
+      summary: 生成完整版歌词草稿
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateFullDraftRequest"
+      responses:
+        "200":
+          description: 歌词草稿
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateFullDraftResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/songs/{id}/full-jobs:
+    post:
+      operationId: createFullJob
+      tags:
+        - songs
+      summary: 提交完整版生成
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFullJobRequest"
+      responses:
+        "201":
+          description: 任务已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateFullJobResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/songs:
+    get:
+      operationId: listSongs
+      tags:
+        - songs
+      summary: 我的歌曲
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 歌曲列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MySongsResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/songs/{id}:
+    get:
+      operationId: getSong
+      tags:
+        - songs
+      summary: 歌曲详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 歌曲详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SongDetail"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/jobs/{id}/notification:
+    post:
+      operationId: acceptJobNotification
+      tags:
+        - jobs
+      summary: 登记完成通知
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 已登记
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/jobs/{id}:
+    get:
+      operationId: getJob
+      tags:
+        - jobs
+      summary: 任务状态
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobDetail"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/public/songs/{id}:
+    get:
+      operationId: getPublicSong
+      tags:
+        - public
+      summary: 公开试听
+      security: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 公开歌曲
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicSong"
+        "404":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/recordings/upload-url:
+    post:
+      operationId: createUploadTicket
+      tags:
+        - recordings
+      summary: 获取录音直传地址
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: 直传凭据
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadTicket"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/recordings/{id}/complete:
+    post:
+      operationId: completeRecording
+      tags:
+        - recordings
+      summary: 确认上传
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 录音
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HummingRecording"
+        "400":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/jobs/{id}/subscriptions:
+    post:
+      operationId: subscribeToJob
+      tags:
+        - jobs
+      summary: 订阅任务
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionRequest"
+      responses:
+        "200":
+          description: 完成
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/me/devices:
+    post:
+      operationId: registerDevice
+      tags:
+        - auth
+      summary: 注册推送设备
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceRequest"
+      responses:
+        "200":
+          description: 完成
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /v1/jobs/{id}/events:
+    get:
+      operationId: jobEvents
+      tags:
+        - jobs
+      summary: 任务状态 SSE
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: 状态事件
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"

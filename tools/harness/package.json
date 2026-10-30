@@ -1,0 +1,16 @@
+{
+  "name": "@demo2song/harness",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.51.1",
+    "yaml": "^2.6.1",
+    "pngjs": "^7.0.0",
+    "ssim.js": "^3.5.0",
+    "miniprogram-automator": "^0.12.1"
+  },
+  "scripts": {
+    "test": "node --test harness.test.mjs"
+  }
+}

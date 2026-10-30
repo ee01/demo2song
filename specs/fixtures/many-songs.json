@@ -1,0 +1,220 @@
+{
+  "user": {
+    "id": "fixture-user",
+    "displayName": "晚风"
+  },
+  "song": {
+    "id": "fixture-song",
+    "title": "旧街晚风",
+    "lyrics": "[Verse]\n风经过旧街角\n[Chorus]\n让旋律陪你到天明"
+  },
+  "draft": {
+    "title": "旧街晚风",
+    "lyrics": "[Verse]\n风经过旧街角\n[Chorus]\n让旋律陪你到天明"
+  },
+  "job": {
+    "status": "running"
+  },
+  "songs": [
+    {
+      "id": "song-0",
+      "title": "晚风旋律 1"
+    },
+    {
+      "id": "song-1",
+      "title": "晚风旋律 2"
+    },
+    {
+      "id": "song-2",
+      "title": "晚风旋律 3"
+    },
+    {
+      "id": "song-3",
+      "title": "晚风旋律 4"
+    },
+    {
+      "id": "song-4",
+      "title": "晚风旋律 5"
+    },
+    {
+      "id": "song-5",
+      "title": "晚风旋律 6"
+    },
+    {
+      "id": "song-6",
+      "title": "晚风旋律 7"
+    },
+    {
+      "id": "song-7",
+      "title": "晚风旋律 8"
+    },
+    {
+      "id": "song-8",
+      "title": "晚风旋律 9"
+    },
+    {
+      "id": "song-9",
+      "title": "晚风旋律 10"
+    },
+    {
+      "id": "song-10",
+      "title": "晚风旋律 11"
+    },
+    {
+      "id": "song-11",
+      "title": "晚风旋律 12"
+    },
+    {
+      "id": "song-12",
+      "title": "晚风旋律 13"
+    },
+    {
+      "id": "song-13",
+      "title": "晚风旋律 14"
+    },
+    {
+      "id": "song-14",
+      "title": "晚风旋律 15"
+    },
+    {
+      "id": "song-15",
+      "title": "晚风旋律 16"
+    },
+    {
+      "id": "song-16",
+      "title": "晚风旋律 17"
+    },
+    {
+      "id": "song-17",
+      "title": "晚风旋律 18"
+    },
+    {
+      "id": "song-18",
+      "title": "晚风旋律 19"
+    },
+    {
+      "id": "song-19",
+      "title": "晚风旋律 20"
+    },
+    {
+      "id": "song-20",
+      "title": "晚风旋律 21"
+    },
+    {
+      "id": "song-21",
+      "title": "晚风旋律 22"
+    },
+    {
+      "id": "song-22",
+      "title": "晚风旋律 23"
+    },
+    {
+      "id": "song-23",
+      "title": "晚风旋律 24"
+    },
+    {
+      "id": "song-24",
+      "title": "晚风旋律 25"
+    },
+    {
+      "id": "song-25",
+      "title": "晚风旋律 26"
+    },
+    {
+      "id": "song-26",
+      "title": "晚风旋律 27"
+    },
+    {
+      "id": "song-27",
+      "title": "晚风旋律 28"
+    },
+    {
+      "id": "song-28",
+      "title": "晚风旋律 29"
+    },
+    {
+      "id": "song-29",
+      "title": "晚风旋律 30"
+    },
+    {
+      "id": "song-30",
+      "title": "晚风旋律 31"
+    },
+    {
+      "id": "song-31",
+      "title": "晚风旋律 32"
+    },
+    {
+      "id": "song-32",
+      "title": "晚风旋律 33"
+    },
+    {
+      "id": "song-33",
+      "title": "晚风旋律 34"
+    },
+    {
+      "id": "song-34",
+      "title": "晚风旋律 35"
+    },
+    {
+      "id": "song-35",
+      "title": "晚风旋律 36"
+    },
+    {
+      "id": "song-36",
+      "title": "晚风旋律 37"
+    },
+    {
+      "id": "song-37",
+      "title": "晚风旋律 38"
+    },
+    {
+      "id": "song-38",
+      "title": "晚风旋律 39"
+    },
+    {
+      "id": "song-39",
+      "title": "晚风旋律 40"
+    },
+    {
+      "id": "song-40",
+      "title": "晚风旋律 41"
+    },
+    {
+      "id": "song-41",
+      "title": "晚风旋律 42"
+    },
+    {
+      "id": "song-42",
+      "title": "晚风旋律 43"
+    },
+    {
+      "id": "song-43",
+      "title": "晚风旋律 44"
+    },
+    {
+      "id": "song-44",
+      "title": "晚风旋律 45"
+    },
+    {
+      "id": "song-45",
+      "title": "晚风旋律 46"
+    },
+    {
+      "id": "song-46",
+      "title": "晚风旋律 47"
+    },
+    {
+      "id": "song-47",
+      "title": "晚风旋律 48"
+    },
+    {
+      "id": "song-48",
+      "title": "晚风旋律 49"
+    },
+    {
+      "id": "song-49",
+      "title": "晚风旋律 50"
+    }
+  ]
+}

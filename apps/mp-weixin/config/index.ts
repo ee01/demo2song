@@ -22,7 +22,8 @@ export default defineConfig({
   framework: "react",
   compiler: "webpack5",
   defineConstants: {
-    __API_BASE__: JSON.stringify(apiBase)
+    __API_BASE__: JSON.stringify(apiBase),
+    __HARNESS__: JSON.stringify(nodeProcess.env.TARO_APP_HARNESS === "1")
   },
   mini: {},
   h5: {}

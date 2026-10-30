@@ -9,6 +9,7 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
     minRecordingSeconds: config.limits.minRecordingSeconds,
     maxRecordingSeconds: config.limits.maxRecordingSeconds,
     demoTargetSeconds: config.limits.demoTargetSeconds,
+    options: config.options,
     enableFullSong: config.features.enableExtendSong,
     generationNoticeTemplateId: env.WECHAT_SUBSCRIBE_TEMPLATE_ID || undefined
   }));

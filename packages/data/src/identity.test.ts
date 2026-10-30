@@ -134,3 +134,18 @@ describe("account repository", () => {
     });
   });
 });
+
+it("keeps deletion cleanup scoped to expired users and removes their metadata", async () => {
+  const repo = new InMemoryRepository();
+  const expired = await repo.createUser({ deletedAt: "2026-01-01T00:00:00Z" });
+  const recent = await repo.createUser({ deletedAt: "2026-10-20T00:00:00Z" });
+  const live = await repo.createUser();
+  await repo.createRecording({ userId: expired.id, objectKey: "recordings/expired.m4a", mimeType: "audio/mp4", durationSeconds: 7 });
+  await repo.createRecording({ userId: live.id, objectKey: "recordings/live.m4a", mimeType: "audio/mp4", durationSeconds: 7 });
+  expect((await repo.listDeletedUsersBefore("2026-09-30T00:00:00Z")).map(user => user.id)).toEqual([expired.id]);
+  await repo.purgeUserData(expired.id);
+  expect(await repo.getUserById(expired.id)).toBeNull();
+  expect(await repo.listRecordingsForUser(expired.id)).toHaveLength(0);
+  expect(await repo.getUserById(recent.id)).not.toBeNull();
+  expect(await repo.listRecordingsForUser(live.id)).toHaveLength(1);
+});

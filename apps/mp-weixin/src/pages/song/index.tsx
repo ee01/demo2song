@@ -87,9 +87,9 @@ export default function SongPage() {
         ) : (
           <View>
             <View className="head">
-              <Text className="head-title">{song.title || (isDemo ? "我的 demo" : "完整版歌曲")}</Text>
-              <Text className="head-desc">
-                <Text className="tag-pill">{isDemo ? "demo" : "完整版"}</Text>
+              <Text data-ui="song.title" className="head-title">{song.title || (isDemo ? "我的 demo" : "完整版歌曲")}</Text>
+              <Text data-ui="song.ai-label" className="head-desc">
+                <Text className="tag-pill">AI 生成 · {isDemo ? "demo" : "完整版"}</Text>
                 {song.durationSeconds ? `约 ${song.durationSeconds} 秒` : ""}
               </Text>
             </View>

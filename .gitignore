@@ -16,3 +16,16 @@ apps/mp-weixin/dist/
 apps/mp-weixin/.DS_Store
 apps/mp-weixin/.swc/
 package-lock.json
+.harness/
+.build/
+apps/ios/*.xcodeproj/
+apps/ios/Config/Local.xcconfig
+apps/ios/DerivedData/
+*.xcresult/
+!design/prototype/dist/
+!design/prototype/dist/prototype.html
+apps/ios/Packages/build/
+apps/ios/WechatSDK/.build/
+apps/ios/build/
+__pycache__/
+*.pyc

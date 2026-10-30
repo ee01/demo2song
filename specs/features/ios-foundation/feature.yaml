@@ -1,0 +1,16 @@
+id: ios-foundation
+title: 随哼 iOS 真机主流程
+platforms: [api, mp-weixin, ios]
+prototype:
+  screens:
+    record: [idle, recording, recorded]
+    compose: [filled, error-network]
+    generating: [queued, running, failed, succeeded]
+    song: [ready]
+    library: [empty, ready, many-songs]
+    login: [idle, error]
+    account: [ready, merge-required]
+  shared-changes: [components.css, runtime.js, screens.yaml]
+divergence:
+  - { platform: ios, ui-id: record.hold, reason: 上滑锁定免按录音 }
+  - { platform: ios, ui-id: generating.status, reason: Live Activity 提供后台进度 }

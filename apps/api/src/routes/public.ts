@@ -13,7 +13,8 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
   bindRoute(app, "get", "/public/songs/:id", async (request, reply) => {
     const { id } = idParamsSchema.parse(request.params);
     const song = await repository.getSongById(id);
-    if (!song) {
+    const owner = song ? await repository.getUserById(song.userId) : null;
+    if (!song || owner?.deletedAt) {
       return reply.code(404).send({ error: "SONG_NOT_FOUND" });
     }
 

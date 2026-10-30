@@ -1,3 +1,4 @@
+import { uploadUrlSchema, uploadTicketSchema, subscriptionSchema, deviceSchema } from "./schemas/ios.js";
 import { OpenApiGeneratorV3, OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
 import { stringify } from "yaml";
 import type { ZodTypeAny } from "zod";
@@ -392,6 +393,12 @@ registry.registerPath({
   }
 });
 
+registry.registerPath({ method: "post", path: "/v1/recordings/upload-url", operationId: "createUploadTicket", tags: ["recordings"], summary: "获取录音直传地址", security: secured, request: jsonBody(uploadUrlSchema), responses: { 200: json("直传凭据", uploadTicketSchema), 400: errorResponse, 401: errorResponse } });
+registry.registerPath({ method: "post", path: "/v1/recordings/{id}/complete", operationId: "completeRecording", tags: ["recordings"], summary: "确认上传", security: secured, request: { params: idParamsSchema }, responses: { 200: json("录音", hummingRecordingSchema), 400: errorResponse, 401: errorResponse } });
+registry.registerPath({ method: "post", path: "/v1/jobs/{id}/subscriptions", operationId: "subscribeToJob", tags: ["jobs"], summary: "订阅任务", security: secured, request: { params: idParamsSchema, ...jsonBody(subscriptionSchema) }, responses: { 200: json("完成", okResponseSchema), 401: errorResponse } });
+registry.registerPath({ method: "post", path: "/v1/me/devices", operationId: "registerDevice", tags: ["auth"], summary: "注册推送设备", security: secured, request: jsonBody(deviceSchema), responses: { 200: json("完成", okResponseSchema), 401: errorResponse } });
+registry.registerPath({ method: "get", path: "/v1/jobs/{id}/events", operationId: "jobEvents", tags: ["jobs"], summary: "任务状态 SSE", security: secured, request: { params: idParamsSchema }, responses: { 200: { description: "状态事件", content: { "text/event-stream": { schema: { type: "string" } } } }, 401: errorResponse } });
+
 function normalizeOpenApi(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(normalizeOpenApi);
   if (!node || typeof node !== "object") return node;
@@ -422,7 +429,7 @@ export function createOpenApiDocument(): Record<string, unknown> {
       title: "随哼 API",
       version: "1.0.0",
       description:
-        "随哼 /v1 契约。微信小程序登录、微信移动应用登录、刷新、退出和 /v1/me 已实现，两端登录命中同一个用户。Apple 登录、绑定合并和注销尚未实现。过渡登录 POST /v1/auth/wechat-login 仍返回 userId。"
+        "随哼 /v1 契约。微信小程序登录、微信移动应用登录、刷新、退出和 /v1/me 已实现，两端登录命中同一个用户。支持 Apple 登录、绑定合并和注销。过渡登录 POST /v1/auth/wechat-login 仍返回 userId。"
     },
     servers: [{ url: "https://api.demo2song.eexx.me" }],
     tags: [
